@@ -1,51 +1,58 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AREI 智慧系統 | 旗艦版</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f5f5f7; margin: 0; overflow-x: hidden; }
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; background-color: #f5f5f7; margin: 0; overflow-x: hidden; -webkit-user-select: none; user-select: none; }
         .arei-static-fade { animation: f 0.4s ease-out forwards; }
         @keyframes f { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        /* 禁用選取 */
-        * { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+        /* 隱藏滾動條 */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- 核心安全防護：環境鎖定 ---
+        const { useState, useEffect, useRef } = React;
+
+        // --- 安全層：網域鎖定 ---
         (function() {
-            const _0x_allowed = "areijames415.github.io";
-            if (window.location.hostname !== _0x_allowed && window.location.hostname !== "localhost") {
-                document.body.innerHTML = "<div style='display:flex;justify-content:center;align-items:center;height:100vh;font-weight:bold;'>非授權網域，系統已鎖定。</div>";
+            const _host = window.location.hostname;
+            const _allowed = "areijames415.github.io";
+            if (_host !== _allowed && _host !== "localhost" && _host !== "127.0.0.1") {
+                document.body.innerHTML = "<div style='display:flex;justify-content:center;align-items:center;height:100vh;font-weight:bold;color:#666;'>[系統安全性鎖定] 非授權網域使用。</div>";
             }
         })();
 
-        // --- 禁用右鍵與開發者工具 ---
+        // --- 安全層：禁用開發者常用鍵 ---
         document.addEventListener('contextmenu', e => e.preventDefault());
-        document.onkeydown = function(e) {
-            if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || (e.ctrlKey && e.keyCode == 85)) return false;
+        document.onkeydown = e => { if (e.keyCode == 123 || (e.ctrlKey && e.shiftKey && (e.keyCode == 73 || e.keyCode == 74)) || (e.ctrlKey && e.keyCode == 85)) return false; };
+
+        // --- 混淆過的配置數據 ---
+        const _C = {
+            n: ["A", "R", "E", "I", "御", "前", "權", "威"],
+            c: ["權", "威", "物", "業", "·", "永", "義", "房", "屋", "同", "盟", "自", "由", "店"],
+            p: "https://lh3.googleusercontent.com/a/ACg8ocL8_A6j5W_C", // 模擬頭像路徑
+            s: ["熱情", "專業", "永續", "共榮"],
+            v: "20260224版本",
+            // 使用 Base64 隱藏部分連結，防止機器爬蟲直接讀取
+            l: {
+                tx: "aHR0cHM6Ly9nZW1pbmkuZ29vZ2xlLmNvbS9zaGFyZS81OThjODBmZjFhNjA=",
+                ed: "aHR0cHM6Ly9nZW1pbmkuZ29vZ2xlLmNvbS9zaGFyZS9kOGUxMTYxYWQ2ODQ=",
+                hs: "aHR0cHM6Ly9nZW1pbmkuZ29vZ2xlLmNvbS9zaGFyZS9mMDVhMDRiNmM0NzA=",
+                cl: "aHR0cHM6Ly9nZW1pbmkuZ29vZ2xlLmNvbS9zaGFyZS8wNTdiNjMyZjU4MGQ=",
+                sp: "aHR0cHM6Ly9nZW1pbmkuZ29vZ2xlLmNvbS9zaGFyZS8yNzRlNmI1MTc2ZmI="
+            }
         };
 
-        const { useState, useEffect, useRef } = React;
-
-        // --- 混淆後的數據庫 (Base64 編碼保護) ---
-        const _0x_v = "20260224版本";
-        const _0x_k = { m: "227708", r: "227708", c: "227708" }; // PIN 碼
-        
-        // 這裡將原本的連結庫進行簡單混淆處理
-        const _0x_l = {
-            tx: "aHR0cHM6Ly9nZW1pbmkuZ29vZ2xlLmNvbS9zaGFyZS81OThjODBmZjFhNjA=",
-            ed: "aHR0cHM6Ly9nZW1pbmkuZ29vZ2xlLmNvbS9zaGFyZS9kOGUxMTYxYWQ2ODQ=",
-            // ... 內部已處理為編碼格式
-        };
+        const PIN_KEY = "227708";
 
         const THEMES = {
             white: { id: 'white', n: '經典白', primary: 'bg-zinc-800', border: 'border-zinc-200', text: 'text-zinc-600', hex: '#ffffff' },
@@ -55,36 +62,113 @@
             green: { id: 'green', n: '運動家綠', primary: 'bg-[#003831]', border: 'border-[#003831]/20', text: 'text-[#003831]', hex: '#003831' }
         };
 
-        // --- Svg 組件與其餘 UI 邏輯 (此處為您原本精美的介面代碼) ---
-        // (因字數限制，建議您將原有的 UI 組件部分貼回此處，但請確保變數名已對齊)
+        const SvgIcon = ({ n, c = "w-6 h-6", o = "currentColor" }) => {
+            const icons = {
+                arei: <path fill={o} d="M12 2L4 21h2.5l1.5-4h8l1.5 4h2.5L12 2zm-3 12.5l3-8 3 8H9z"/>,
+                bolt: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill={o} />,
+                shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+                tax: <path d="M12 8c-1.6 0-3 .9-3 2s1.3 2 3 2 3 .9 3 2-1.3 2-3 2m0-8V7m0 9v1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+                users: <path d="M12 4a4 4 0 100 8 4 4 0 000-8zM2 20a10 10 0 0120 0H2z" />,
+                back: <path d="M15 18l-6-6 6-6" />,
+                magic: <circle cx="12" cy="12" r="4" fill={o} fillOpacity="0.2"/>
+            };
+            return <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{icons[n]}</svg>;
+        };
 
         const App = () => {
             const [curTheme, setCurTheme] = useState(THEMES.white);
             const [md, setMd] = useState(null);
             const [pn, setPn] = useState('');
+            const [err, setErr] = useState(false);
+            const T = curTheme;
 
-            // 加密驗證邏輯
-            const _0x_auth = () => {
-                if (pn === _0x_k.m) {
-                    alert("認證成功，轉向系統...");
-                    // 執行解碼跳轉
-                    // window.open(atob(_0x_l.tx), '_blank'); 
+            const handleAuth = () => {
+                if (pn === PIN_KEY) {
+                    const url = atob(_C.l[md]); // 解碼並跳轉
+                    window.open(url, '_blank');
+                    setMd(null); setPn(''); setErr(false);
                 } else {
-                    alert("認證失敗");
-                    setPn('');
+                    setErr(true);
+                    setTimeout(() => { setErr(false); setPn(''); }, 1000);
                 }
             };
 
-            useEffect(() => { if (pn.length === 6) _0x_auth(); }, [pn]);
+            useEffect(() => { if (pn.length === 6) handleAuth(); }, [pn]);
 
             return (
-                <div className="min-h-screen arei-static-fade">
-                    {/* 這裡放入您原本的導覽列與 MainContent 介面 */}
-                    <div className="p-10 text-center">
-                        <h1 className="text-2xl font-black">AREI 智慧系統</h1>
-                        <p className="text-zinc-400 mt-2">版本：{_0x_v}</p>
-                        {/* 您的主題切換器按鈕 */}
+                <div className="max-w-[460px] mx-auto min-h-screen p-4 pt-20 pb-24 arei-static-fade relative">
+                    {/* 背景光暈 */}
+                    <div className={`fixed top-0 right-0 w-64 h-64 rounded-full blur-[100px] opacity-30 -z-10`} style={{backgroundColor: T.hex}}></div>
+
+                    {/* 頂部導航 */}
+                    <nav className="fixed top-0 left-0 w-full z-[50] bg-white/80 backdrop-blur-md p-4 flex justify-between items-center border-b border-zinc-100 px-6">
+                        <div className="flex items-center gap-2">
+                            <div className={`${T.primary} w-8 h-8 rounded-lg flex items-center justify-center text-white shadow-lg`}><SvgIcon n="arei" c="w-5 h-5" o={T.id==='yellow'?'#333':'#fff'} /></div>
+                            <span className="font-black text-sm tracking-tighter">AREI 智慧系統</span>
+                        </div>
+                        <div className="flex gap-2">
+                            {Object.values(THEMES).map(t => (
+                                <button key={t.id} onClick={()=>setCurTheme(t)} className={`w-4 h-4 rounded-full border ${T.id===t.id?'ring-2 ring-offset-2 ring-zinc-400':'opacity-40'}`} style={{backgroundColor:t.hex}} />
+                            ))}
+                        </div>
+                    </nav>
+
+                    {/* 個人名片區 */}
+                    <div className="bg-white/90 backdrop-blur-md rounded-[2.5rem] p-6 shadow-xl border border-zinc-100 flex items-center gap-6 mb-6">
+                        <div className="p-1 rounded-[2rem] bg-gradient-to-br from-blue-900 to-yellow-400">
+                            <div className="w-24 h-32 rounded-[1.8rem] bg-zinc-200 overflow-hidden border-2 border-white">
+                                <img src={_C.p} className="w-full h-full object-cover" alt="Profile" />
+                            </div>
+                        </div>
+                        <div className="flex-1 space-y-3">
+                            <div className="flex justify-between">{_C.n.map((char, i)=><span key={i} className="font-black text-2xl">{char}</span>)}</div>
+                            <div className="flex justify-between opacity-50">{_C.c.map((char, i)=><span key={i} className="text-[9px] font-bold">{char}</span>)}</div>
+                            <div className="flex gap-2">
+                                <button onClick={()=>setMd('sp')} className={`${T.primary} ${T.id==='yellow'?'text-zinc-900':'text-white'} flex-1 py-2 rounded-xl text-[10px] font-black shadow-md`}>SP 獎金系統</button>
+                                <button onClick={()=>setMd('ed')} className="bg-zinc-100 p-2 rounded-xl"><SvgIcon n="bolt" c="w-4 h-4" o="#000080" /></button>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* 功能格網 */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        {[
+                            {id:'tx', t:'租管節稅', s:'速算工具', i:'tax'},
+                            {id:'hs', t:'售屋節稅', s:'速算工具', i:'tax'},
+                            {id:'cl', t:'團隊好客', s:'即時租買', i:'users'}
+                        ].map(f => (
+                            <div key={f.id} onClick={()=>setMd(f.id)} className="bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-50 active:scale-95 transition-all text-center cursor-pointer">
+                                <div className="bg-zinc-50 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-3"><SvgIcon n={f.i} c="w-6 h-6" o={T.hex} /></div>
+                                <div className="font-black text-lg">{f.t}</div>
+                                <div className="text-[10px] text-zinc-400 font-bold tracking-widest uppercase">{f.s}</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 頁尾認證資訊 */}
+                    <footer className="text-center space-y-4 opacity-40 py-10">
+                        <p className="text-[10px] font-black tracking-[0.4em]">© 2026 AREI BRANDING SERVICE</p>
+                        <p className="text-[10px] font-bold tracking-tighter">設計者 · A R E I 曾啟泰 | {_C.v}</p>
+                    </footer>
+
+                    {/* 安全認證遮罩 */}
+                    {md && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fadeIn">
+                            <div className="absolute inset-0 bg-black/90 backdrop-blur-xl" onClick={()=>setMd(null)} />
+                            <div className="bg-zinc-900 w-full max-w-sm rounded-[3rem] p-10 relative border border-white/10 text-center">
+                                <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500"><SvgIcon n="shield" c="w-8 h-8" /></div>
+                                <h3 className="text-white font-black text-xl mb-2">身分認證</h3>
+                                <p className="text-zinc-500 text-[10px] font-bold tracking-widest mb-8">AUTHENTICATION REQUIRED</p>
+                                <div className="flex justify-center gap-3 mb-10">
+                                    {[...Array(6)].map((_, i) => (
+                                        <div key={i} className={`w-10 h-14 rounded-xl flex items-center justify-center text-2xl font-black border-2 ${pn.length > i ? 'border-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)]' : 'border-zinc-800 text-zinc-700 bg-zinc-800/50'}`}>{pn[i] || '•'}</div>
+                                    ))}
+                                </div>
+                                <input type="tel" autoFocus value={pn} onChange={e=>setPn(e.target.value.slice(0,6))} className="absolute inset-0 w-full h-full opacity-0 cursor-none" />
+                                {err && <p className="text-red-500 text-xs font-bold animate-pulse">PIN 碼錯誤，請重新輸入</p>}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
