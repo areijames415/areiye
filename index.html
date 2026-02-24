@@ -1,448 +1,501 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc, query, Timestamp } from 'firebase/firestore';
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AREI 智慧系統 | 旗艦版</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Babel 用於在瀏覽器中解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #f5f5f7;
+            margin: 0;
+            overflow-x: hidden;
+        }
 
-// [NANO-ENGINE] 網頁封包處理大師專屬：連結精確更新、佈局重組、穩定輸入與五色主題引擎
-const firebaseConfig = JSON.parse(__firebase_config);
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        .arei-static-fade { 
+            animation: f 0.4s ease-out forwards; 
+        }
+        @keyframes f { 
+            from { opacity: 0; } 
+            to { opacity: 1; } 
+        }
 
-const D = {
-  n: ["A", "R", "E", "I", "御", "前", "權", "威"], 
-  c: ["權", "威", "物", "業", "·", "永", "義", "房", "屋", "同", "盟", "自", "由", "店"],
-  p: "https://lh3.googleusercontent.com/d/1yhU7bP2NRec1w-KtKp9miBQOgmWPcE74",
-  s: ["熱情", "專業", "永續", "共榮"],
-  l: {
-    tx: "https://gemini.google.com/share/598c80ff1a60", // 已更新：租管節稅
-    ed: "https://gemini.google.com/share/d8e1161ad684", 
-    hs: "https://gemini.google.com/share/f05a04b6c470", 
-    cl: "https://gemini.google.com/share/057b632f580d", 
-    sp: "https://gemini.google.com/share/274e6b5176fb", 
-    rd: "https://gemini.google.com/share/d57e8b71cc15", 
-    mg: "https://gemini.google.com/share/08ef98275b74", 
-    ar: "https://gemini.google.com/share/733cb6041f88", 
-    ls: "https://gemini.google.com/share/af689c68f058", 
-    sv: "https://gemini.google.com/share/9d59be1f3fc2", 
-    t4: "https://gemini.google.com/share/5dc5d403737b", 
-    mk: "https://gemini.google.com/share/34151fd62328", // 已更新：AI 指令
-    t1: "https://gemini.google.com/share/7868ebc8b06c", 
-    t2: "https://gemini.google.com/share/cd2b14d3338b", // 已更新：AI 數位去雜物
-    t3: "https://gemini.google.com/share/733cb6041f88", 
-    re: "https://gemini.google.com/share/f50dc2d74992", // 新增：租買評估
-    gd: "https://gemini.google.com/share/5961d689cf9b", 
-    ms: "https://gemini.google.com/share/867bb8550323", // 已更新：店長美好時光
-    ant: "https://gemini.google.com/share/82b4b39dc31f" 
-  },
-  diagonal: 'linear-gradient(135deg, #000080 50%, #ffdb00 50%)',
-  version: "20260224版本" 
-};
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
 
-const PIN = { m: "227708", r: "227708", cal: "227708" };
+        ::selection {
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-const THEMES = {
-  white: { id: 'white', n: '經典白', primary: 'bg-zinc-800', border: 'border-zinc-200', text: 'text-zinc-600', shadow: 'shadow-zinc-200/50', iconBg: 'bg-zinc-100', navBorder: 'border-zinc-200/40', bgGlow: 'from-zinc-200/30', hex: '#ffffff' },
-  red: { id: 'red', n: '熱情紅', primary: 'bg-red-600', border: 'border-red-100', text: 'text-red-700', shadow: 'shadow-red-200/50', iconBg: 'bg-red-50', navBorder: 'border-red-200/30', bgGlow: 'from-red-50/40', hex: '#dc2626' },
-  blue: { id: 'blue', n: '深邃藍', primary: 'bg-blue-900', border: 'border-blue-200', text: 'text-blue-900', shadow: 'shadow-blue-900/20', iconBg: 'bg-blue-50/80', navBorder: 'border-blue-900/10', bgGlow: 'from-blue-200/40', hex: '#1e3a8a' },
-  yellow: { id: 'yellow', n: '鵝黃色', primary: 'bg-[#ffdb00]', border: 'border-[#ffdb00]/40', text: 'text-[#665500]', shadow: 'shadow-[#ffdb00]/30', iconBg: 'bg-[#ffdb00]/15', navBorder: 'border-[#ffdb00]/30', bgGlow: 'from-[#ffdb00]/40', hex: '#ffdb00' },
-  green: { id: 'green', n: '運動家綠', primary: 'bg-[#003831]', border: 'border-[#003831]/20', text: 'text-[#003831]', shadow: 'shadow-[#003831]/30', iconBg: 'bg-[#003831]/5', navBorder: 'border-[#003831]/10', bgGlow: 'from-[#003831]/40', hex: '#003831' }
-};
+    <!-- Import Map 用於瀏覽器模組識別 -->
+    <script type="importmap">
+        {
+          "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom": "https://esm.sh/react-dom@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "firebase/app": "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js",
+            "firebase/auth": "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js",
+            "firebase/firestore": "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"
+          }
+        }
+    </script>
 
-const Svg = ({ n, c = "w-6 h-6", o = "currentColor" }) => {
-  const d = {
-    arei: <g><path fill={o} d="M12 2L4 21h2.5l1.5-4h8l1.5 4h2.5L12 2zm-3 12.5l3-8 3 8H9z"/></g>,
-    calendar: <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
-    tax: <path d="M12 8c-1.6 0-3 .9-3 2s1.3 2 3 2 3 .9 3 2-1.3 2-3 2m0-8V7m0 9v1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
-    users: <path d="M12 4a4 4 0 100 8 4 4 0 000-8zM2 20a10 10 0 0120 0H2z" />,
-    shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
-    bolt: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill={o} />,
-    antelope: <g fill="none" stroke={o} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22l-4-9 4-2 4 2-4 9z" fill={o} fillOpacity="0.1" /><path d="M8 8c-1-3-3-6-2-8" /><path d="M16 8c1-3 3-6 2-8" /><path d="M7 11l-3-1M17 11l3-1" /></g>,
-    back: <path d="M15 18l-6-6 6-6" />,
-    trash: <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
-    ls: <g><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="17" cy="17" r="4" fill="none" stroke={o} strokeWidth="1.5"/><path d="M20 20l2 2"/></g>,
-    gd: <g><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/><path d="M2 12h20"/><circle cx="12" cy="12" r="3" fill={o} fillOpacity="0.2"/></g>,
-    sv: <g><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/><path d="M3 12h18"/><circle cx="12" cy="12" r="1.5" fill={o}/></g>,
-    t4: <g><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></g>,
-    blueprint: <g><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/><path d="M2 12h20"/></g>,
-    magic: <g><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/><circle cx="12" cy="12" r="4" fill={o} fillOpacity="0.2"/></g>,
-    chart: <g><path d="M21.21 15.89A10 10 0 118 2.83M22 12A10 10 0 0012 2v10z"/></g>,
-    terminal: <g><path d="M4 17l6-6-6-6m8 14h8" /></g>,
-    star: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />,
-    report: <g><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6m-8 5h4m-4 4h4"/></g>,
-    evaluate: <g><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/><circle cx="17.5" cy="17.5" r="2.5" strokeWidth="1.5"/><path d="M19 19l2 2"/></g>
-  };
-  return <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{d[n]}</svg>;
-};
+    <!-- 使用 type="text/babel" 並配合 data-type="module" 以支援 JSX 與 ESM -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, onSnapshot, deleteDoc, query, Timestamp } from 'firebase/firestore';
 
-const App = () => {
-  const [user, setUser] = useState(null);
-  const [shortId, setShortId] = useState('-----');
-  const [curTheme, setCurTheme] = useState(THEMES.white); 
-  const [view, setView] = useState('main'); 
-  const [md, setMd] = useState(null); 
-  const [pn, setPn] = useState(''); 
-  const [err, setErr] = useState(false);
-  
-  // 行事曆資料
-  const [events, setEvents] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newTime, setNewTime] = useState('');
-  const [newCreator, setNewCreator] = useState(''); 
+        // --- 系統設定區 ---
+        const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = window.__app_id || 'default-app-id';
 
-  const inputRef = useRef(null);
+        const D = {
+          n: ["A", "R", "E", "I", "御", "前", "權", "威"], 
+          c: ["權", "威", "物", "業", "·", "永", "義", "房", "屋", "同", "盟", "自", "由", "店"],
+          p: "https://lh3.googleusercontent.com/d/1yhU7bP2NRec1w-KtKp9miBQOgmWPcE74",
+          s: ["熱情", "專業", "永續", "共榮"],
+          l: {
+            tx: "https://gemini.google.com/share/598c80ff1a60", 
+            ed: "https://gemini.google.com/share/d8e1161ad684", 
+            hs: "https://gemini.google.com/share/f05a04b6c470", 
+            cl: "https://gemini.google.com/share/057b632f580d", 
+            sp: "https://gemini.google.com/share/274e6b5176fb", 
+            rd: "https://gemini.google.com/share/d57e8b71cc15", 
+            mg: "https://gemini.google.com/share/08ef98275b74", 
+            ar: "https://gemini.google.com/share/733cb6041f88", 
+            ls: "https://gemini.google.com/share/af689c68f058", 
+            sv: "https://gemini.google.com/share/9d59be1f3fc2", 
+            t4: "https://gemini.google.com/share/5dc5d403737b", 
+            mk: "https://gemini.google.com/share/34151fd62328", 
+            t1: "https://gemini.google.com/share/7868ebc8b06c", 
+            t2: "https://gemini.google.com/share/cd2b14d3338b", 
+            t3: "https://gemini.google.com/share/733cb6041f88", 
+            re: "https://gemini.google.com/share/f50dc2d74992", 
+            gd: "https://gemini.google.com/share/5961d689cf9b", 
+            ms: "https://gemini.google.com/share/867bb8550323", 
+            ant: "https://gemini.google.com/share/82b4b39dc31f" 
+          },
+          diagonal: 'linear-gradient(135deg, #000080 50%, #ffdb00 50%)',
+          version: "20260224版本" 
+        };
 
-  useEffect(() => {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      if (u) syncUserProfile(u.uid);
-    });
-    return () => unsubscribe();
-  }, []);
+        const PIN = { m: "227708", r: "227708", cal: "227708" };
 
-  useEffect(() => {
-    if (!user) return;
-    const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'calendar'));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setEvents(data);
-    });
-    return () => unsubscribe();
-  }, [user]);
+        const THEMES = {
+          white: { id: 'white', n: '經典白', primary: 'bg-zinc-800', border: 'border-zinc-200', text: 'text-zinc-600', shadow: 'shadow-zinc-200/50', iconBg: 'bg-zinc-100', navBorder: 'border-zinc-200/40', bgGlow: 'from-zinc-200/30', hex: '#ffffff' },
+          red: { id: 'red', n: '熱情紅', primary: 'bg-red-600', border: 'border-red-100', text: 'text-red-700', shadow: 'shadow-red-200/50', iconBg: 'bg-red-50', navBorder: 'border-red-200/30', bgGlow: 'from-red-50/40', hex: '#dc2626' },
+          blue: { id: 'blue', n: '深邃藍', primary: 'bg-blue-900', border: 'border-blue-200', text: 'text-blue-900', shadow: 'shadow-blue-900/20', iconBg: 'bg-blue-50/80', navBorder: 'border-blue-900/10', bgGlow: 'from-blue-200/40', hex: '#1e3a8a' },
+          yellow: { id: 'yellow', n: '鵝黃色', primary: 'bg-[#ffdb00]', border: 'border-[#ffdb00]/40', text: 'text-[#665500]', shadow: 'shadow-[#ffdb00]/30', iconBg: 'bg-[#ffdb00]/15', navBorder: 'border-[#ffdb00]/30', bgGlow: 'from-[#ffdb00]/40', hex: '#ffdb00' },
+          green: { id: 'green', n: '運動家綠', primary: 'bg-[#003831]', border: 'border-[#003831]/20', text: 'text-[#003831]', shadow: 'shadow-[#003831]/30', iconBg: 'bg-[#003831]/5', navBorder: 'border-[#003831]/10', bgGlow: 'from-[#003831]/40', hex: '#003831' }
+        };
 
-  const syncUserProfile = async (uid) => {
-    try {
-      const userRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'data');
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        setShortId(data.shortId || '00000');
-        if (data.themeId) setCurTheme(THEMES[data.themeId] || THEMES.white);
-      } else {
-        const sid = Math.floor(10000 + Math.random() * 90000).toString();
-        setShortId(sid);
-        await setDoc(userRef, { shortId: sid, themeId: 'white', createdAt: Date.now() });
-      }
-    } catch (e) { setShortId('88219'); }
-  };
+        const Svg = ({ n, c = "w-6 h-6", o = "currentColor" }) => {
+          const d = {
+            arei: <g><path fill={o} d="M12 2L4 21h2.5l1.5-4h8l1.5 4h2.5L12 2zm-3 12.5l3-8 3 8H9z"/></g>,
+            calendar: <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />,
+            tax: <path d="M12 8c-1.6 0-3 .9-3 2s1.3 2 3 2 3 .9 3 2-1.3 2-3 2m0-8V7m0 9v1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
+            users: <path d="M12 4a4 4 0 100 8 4 4 0 000-8zM2 20a10 10 0 0120 0H2z" />,
+            shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+            bolt: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill={o} />,
+            antelope: <g fill="none" stroke={o} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22l-4-9 4-2 4 2-4 9z" fill={o} fillOpacity="0.1" /><path d="M8 8c-1-3-3-6-2-8" /><path d="M16 8c1-3 3-6 2-8" /><path d="M7 11l-3-1M17 11l3-1" /></g>,
+            back: <path d="M15 18l-6-6 6-6" />,
+            trash: <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
+            ls: <g><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="17" cy="17" r="4" fill="none" stroke={o} strokeWidth="1.5"/><path d="M20 20l2 2"/></g>,
+            gd: <g><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/><path d="M2 12h20"/><circle cx="12" cy="12" r="3" fill={o} fillOpacity="0.2"/></g>,
+            sv: <g><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8 8V5a2 2 0 012-2h4a2 2 0 012 2v3"/><path d="M3 12h18"/><circle cx="12" cy="12" r="1.5" fill={o}/></g>,
+            t4: <g><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></g>,
+            blueprint: <g><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M9 22V12h6v10"/><path d="M2 12h20"/></g>,
+            magic: <g><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/><circle cx="12" cy="12" r="4" fill={o} fillOpacity="0.2"/></g>,
+            chart: <g><path d="M21.21 15.89A10 10 0 118 2.83M22 12A10 10 0 0012 2v10z"/></g>,
+            terminal: <g><path d="M4 17l6-6-6-6m8 14h8" /></g>,
+            star: <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />,
+            report: <g><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6m-8 5h4m-4 4h4"/></g>,
+            evaluate: <g><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/><circle cx="17.5" cy="17.5" r="2.5" strokeWidth="1.5"/><path d="M19 19l2 2"/></g>
+          };
+          return <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">{d[n]}</svg>;
+        };
 
-  const saveThemePref = async (theme) => {
-    setCurTheme(theme);
-    if (!user) return;
-    try {
-      const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data');
-      await setDoc(userRef, { themeId: theme.id }, { merge: true });
-    } catch (e) {}
-  };
+        const App = () => {
+          const [user, setUser] = useState(null);
+          const [shortId, setShortId] = useState('-----');
+          const [curTheme, setCurTheme] = useState(THEMES.white); 
+          const [view, setView] = useState('main'); 
+          const [md, setMd] = useState(null); 
+          const [pn, setPn] = useState(''); 
+          const [err, setErr] = useState(false);
+          const [events, setEvents] = useState([]);
+          const [selectedDate, setSelectedDate] = useState(new Date());
+          const [showEventModal, setShowEventModal] = useState(false);
+          const [newTitle, setNewTitle] = useState('');
+          const [newTime, setNewTime] = useState('');
+          const [newCreator, setNewCreator] = useState(''); 
 
-  const goAuth = () => {
-    const l = D.l;
-    const isCorrect = (md==='mg' && pn===PIN.m) || (md==='rd' && pn===PIN.r) || (md==='cal' && pn===PIN.cal);
-    if (isCorrect) {
-      if (md === 'cal') setView('calendar');
-      else window.open(l[md==='rd'?'rd':'mg'], '_blank'); 
-      setMd(null); setErr(false); setPn('');
-    } else {
-      setErr(true);
-      setTimeout(() => { setErr(false); setPn(''); }, 1500);
-    }
-  };
+          const inputRef = useRef(null);
 
-  useEffect(() => {
-    if (pn.length === 6) goAuth();
-  }, [pn, md]);
+          useEffect(() => {
+            const initAuth = async () => {
+              if (window.__initial_auth_token) {
+                await signInWithCustomToken(auth, window.__initial_auth_token);
+              } else {
+                await signInAnonymously(auth);
+              }
+            };
+            initAuth();
+            const unsubscribe = onAuthStateChanged(auth, (u) => {
+              setUser(u);
+              if (u) syncUserProfile(u.uid);
+            });
+            return () => unsubscribe();
+          }, []);
 
-  const addEvent = async () => {
-    if (!newTitle || !newCreator || !user) return;
-    try {
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'calendar'), {
-        title: newTitle,
-        time: newTime,
-        creator: newCreator, 
-        date: selectedDate.toDateString(),
-        createdAt: Timestamp.now()
-      });
-      setNewTitle(''); setNewTime(''); setNewCreator(''); setShowEventModal(false);
-    } catch (e) {}
-  };
+          useEffect(() => {
+            if (!user) return;
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'calendar'));
+            const unsubscribe = onSnapshot(q, (snap) => {
+              const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              setEvents(data);
+            }, (error) => console.error("Firestore error:", error));
+            return () => unsubscribe();
+          }, [user]);
 
-  const deleteEvent = async (id) => {
-    try {
-      await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'calendar', id));
-    } catch (e) {}
-  };
+          const syncUserProfile = async (uid) => {
+            try {
+              const userRef = doc(db, 'artifacts', appId, 'users', uid, 'profile', 'data');
+              const snap = await getDoc(userRef);
+              if (snap.exists()) {
+                const data = snap.data();
+                setShortId(data.shortId || '00000');
+                if (data.themeId) setCurTheme(THEMES[data.themeId] || THEMES.white);
+              } else {
+                const sid = Math.floor(10000 + Math.random() * 90000).toString();
+                setShortId(sid);
+                await setDoc(userRef, { shortId: sid, themeId: 'white', createdAt: Date.now() });
+              }
+            } catch (e) { setShortId('88219'); }
+          };
 
-  const T = curTheme;
-  const now = new Date();
-  
-  const weeklyEvents = events.filter(e => {
-    const eDate = new Date(e.date);
-    const today = new Date(now.toDateString());
-    const nextWeek = new Date();
-    nextWeek.setDate(today.getDate() + 7);
-    return eDate >= today && eDate < nextWeek;
-  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+          const saveThemePref = async (theme) => {
+            setCurTheme(theme);
+            if (!user) return;
+            try {
+              const userRef = doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data');
+              await setDoc(userRef, { themeId: theme.id }, { merge: true });
+            } catch (e) {}
+          };
 
-  const changeMonth = (offset) => {
-    const next = new Date(selectedDate.setMonth(selectedDate.getMonth() + offset));
-    setSelectedDate(new Date(next));
-  };
+          const goAuth = () => {
+            const isCorrect = (md==='mg' && pn===PIN.m) || (md==='rd' && pn===PIN.r) || (md==='cal' && pn===PIN.cal);
+            if (isCorrect) {
+              if (md === 'cal') setView('calendar');
+              else window.open(D.l[md==='rd'?'rd':'mg'], '_blank'); 
+              setMd(null); setErr(false); setPn('');
+            } else {
+              setErr(true);
+              setTimeout(() => { setErr(false); setPn(''); }, 1500);
+            }
+          };
 
-  // --- 主視圖 ---
-  const MainContent = () => (
-    <div className="max-w-[460px] mx-auto space-y-6 mt-4 arei-static-fade text-center">
-      <div className="flex justify-center mb-2">
-        <div className={`bg-white/50 backdrop-blur-md px-5 py-1.5 rounded-full border ${T.border} flex items-center gap-2.5 shadow-sm text-center`}>
-          <div className={`w-1.5 h-1.5 rounded-full ${T.primary}`}></div>
-          <span className={`text-[10px] font-black tracking-[0.3em] uppercase ${T.text}`}>ID · {shortId}</span>
-        </div>
-      </div>
+          useEffect(() => {
+            if (pn.length === 6) goAuth();
+          }, [pn, md]);
 
-      <div className={`bg-white/90 backdrop-blur-sm rounded-[2.8rem] p-7 shadow-xl flex items-center border ${T.border} relative overflow-hidden text-center`}>
-        <div className="flex-shrink-0 relative">
-          <div className={`p-[4px] rounded-[42px] shadow-2xl`} style={{ background: D.diagonal }}>
-            <img src={D.p} className={`w-[125px] h-[165px] rounded-[38px] object-cover border-2 border-white`} />
-          </div>
-        </div>
-        <div className="flex-1 pl-8 pr-14 flex flex-col justify-between h-[165px] text-center text-center">
-          <div className="flex justify-between items-center w-full text-center">{D.n.map((char, i) => (<span key={i} className="text-3xl font-black text-gray-900 leading-none tracking-tighter text-center">{char}</span>))}</div>
-          <div className="flex justify-between items-center w-full py-0.5 text-center">{D.c.map((char, i) => (<span key={i} className={`text-[10px] font-black uppercase ${T.text}`}>{char}</span>))}</div>
-          <div className="flex items-center justify-between w-full text-center">
-            <button onClick={()=>window.open(D.l.ed,'_blank')} className={`${T.primary} ${T.id==='yellow'?'text-zinc-900':'text-white'} px-4 py-2 rounded-full text-[12px] font-black shadow-lg active:scale-95 whitespace-nowrap text-center`}>教育訓練</button>
-            <div className="flex items-center gap-1.5 text-center">
-              <button onClick={()=>window.open(D.l.sp, '_blank')} className={`w-9 h-9 bg-yellow-400 rounded-full flex items-center justify-center shadow-md active:scale-90 font-black text-[12px] text-[#1f2937] tracking-tighter text-center`}>SP</button>
-              <button onClick={()=>setMd('mg')} className={`w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-md active:scale-90 border ${T.navBorder} text-center`}><Svg n="bolt" c="w-5 h-5" o="#000080" /></button>
-            </div>
-          </div>
-          <div className={`bg-white/50 backdrop-blur-md px-3 py-2.5 rounded-2xl border ${T.border} shadow-inner flex justify-between items-center w-full text-center`}>
-            {D.s.map((word, i) => (<span key={i} className={`font-black text-[14px] ${T.text} uppercase tracking-widest text-center`}>{word}</span>))}
-          </div>
-        </div>
-      </div>
+          const addEvent = async () => {
+            if (!newTitle || !newCreator || !user) return;
+            try {
+              await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'calendar'), {
+                title: newTitle,
+                time: newTime,
+                creator: newCreator, 
+                date: selectedDate.toDateString(),
+                createdAt: Timestamp.now()
+              });
+              setNewTitle(''); setNewTime(''); setNewCreator(''); setShowEventModal(false);
+            } catch (e) {}
+          };
 
-      <div className="grid grid-cols-2 gap-4 px-1 text-center">
-        {[{id:'tx',t:'租管節稅',s:'速算工具',i:'tax',l:D.l.tx},{id:'rd',t:'Rich Data',s:'數據系統',i:'rich',isP:'rd'},{id:'ht',t:'售屋節稅',s:'速算工具',i:'tax',l:D.l.hs},{id:'cl',t:'團隊好客',s:'即時租買',i:'users',l:D.l.cl}].map(f => (
-          <div key={f.id} onClick={()=>f.isP?setMd(f.isP):window.open(f.l,'_blank')} className={`bg-white/95 rounded-[2.5rem] p-7 shadow-lg border ${f.isP ? T.border : 'border-white'} active:scale-95 cursor-pointer group text-center`}>
-            <div className={`${T.iconBg} ${T.text} w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner group-hover:scale-105 transition-transform text-center`}>
-              {f.i==='rich' ? <span className="font-black text-xl text-center">RD</span> : <Svg n={f.i} c="w-8 h-8" o={T.id === 'white' ? '#000080' : T.hex} />}
-            </div>
-            <div className="font-black text-lg text-black mb-1 leading-none text-center">{f.t}</div>
-            <div className="text-xs text-gray-600 font-bold uppercase tracking-wider text-center">{f.s}</div>
-          </div>
-        ))}
-      </div>
+          const deleteEvent = async (id) => {
+            try {
+              await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'calendar', id));
+            } catch (e) {}
+          };
 
-      {/* 快速工具區 - 已補回 LOGO 並新增 AI 指令 */}
-      <div className="grid grid-cols-5 gap-1.5 px-1 text-center">
-        {[
-          {id:'r1',t:'預備上架',n:'ls',l:D.l.ls},
-          {id:'r2',t:'外商生活',n:'gd',l:D.l.gd},
-          {id:'r3',t:'客服寶箱',n:'sv',l:D.l.sv},
-          {id:'r4',t:'賀我成交',n:'t4',l:D.l.t4},
-          {id:'r5',t:'AI指令',n:'terminal',l:D.l.mk} // 已移動：AI 指令
-        ].map(m => (
-          <div key={m.id} onClick={()=>window.open(m.l,'_blank')} className={`bg-white rounded-[1.8rem] aspect-square flex flex-col items-center justify-center border ${T.border} shadow-md p-1 active:scale-90 cursor-pointer text-center`}>
-            <div className={`${T.iconBg} w-11 h-11 rounded-xl flex items-center justify-center mb-1.5 shadow-inner transition-colors text-center`}><Svg n={m.n} c="w-5 h-5" o={T.id === 'white' ? '#000080' : T.hex}/></div>
-            <div className={`text-[11px] font-black leading-tight text-gray-900 text-center`}>{m.t}</div>
-          </div>
-        ))}
-      </div>
+          const T = curTheme;
+          const now = new Date();
+          const weeklyEvents = events.filter(e => {
+            const eDate = new Date(e.date);
+            const today = new Date(now.toDateString());
+            const nextWeek = new Date();
+            nextWeek.setDate(today.getDate() + 7);
+            return eDate >= today && eDate < nextWeek;
+          }).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      <div className="space-y-5 px-1 text-center">
-        <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.25em] opacity-80 py-2 text-center">Smart Marketing Tools</h3>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { t: 'AI 專業格局圖', l: 't1', i: 'blueprint' },
-            { t: 'AI 數位去雜物', l: 't2', i: 'magic' },
-            { t: '代管投報分析', l: 't3', i: 'chart' },
-            { t: '租買評估', l: 're', i: 'evaluate' }, // 已更換：取代原實用指令
-            { t: '店長美好時光', l: 'ms', i: 'star' },
-            { t: '屋主租管年報', l: 'ar', i: 'report' }
-          ].map((item, i) => (
-            <div key={i} onClick={()=>window.open(D.l[item.l],'_blank')} className={`bg-white p-6 rounded-[2.2rem] font-black text-gray-900 border ${T.border} shadow-md active:scale-95 flex flex-col items-center justify-center gap-3 cursor-pointer hover:${T.iconBg} transition-all text-center`}>
-              <div className={`${T.iconBg} w-12 h-12 rounded-xl flex items-center justify-center shadow-inner text-center`}>
-                 <Svg n={item.i} c="w-6 h-6" o={T.id === 'white' ? '#000080' : T.hex} />
+          const changeMonth = (offset) => {
+            const next = new Date(selectedDate.setMonth(selectedDate.getMonth() + offset));
+            setSelectedDate(new Date(next));
+          };
+
+          const daysInMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate();
+          const firstDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1).getDay();
+          const days = [];
+          for (let i = 0; i < firstDay; i++) days.push(null);
+          for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+          const MainContent = () => (
+            <div className="max-w-[460px] mx-auto space-y-6 mt-4 arei-static-fade text-center">
+              <div className="flex justify-center mb-2">
+                <div className={`bg-white/50 backdrop-blur-md px-5 py-1.5 rounded-full border ${T.border} flex items-center gap-2.5 shadow-sm text-center`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${T.primary}`}></div>
+                  <span className={`text-[10px] font-black tracking-[0.3em] uppercase ${T.text}`}>ID · {shortId}</span>
+                </div>
               </div>
-              <span className={`text-[15px] font-black tracking-tighter ${T.text}`}>{item.t}</span>
-            </div>
-          ))}
-        </div>
-      </div>
 
-      <div className="px-1 pt-4 pb-10 text-center">
-         <div className={`bg-white/80 backdrop-blur-md rounded-[3rem] p-8 border ${T.border} shadow-xl relative overflow-hidden text-center`}>
-            <div className="flex justify-between items-center mb-6 text-center">
-               <div className="flex items-center gap-3 text-center">
-                  <div className={`${T.iconBg} p-2.5 rounded-xl text-center`}><Svg n="calendar" c="w-5 h-5" o={T.id === 'white' ? '#000080' : T.hex} /></div>
-                  <div className="text-left">
-                     <h3 className="text-lg font-black text-gray-900 tracking-tight text-center">本周行程看板</h3>
-                     <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase text-center text-center">Weekly Team Schedule</p>
+              <div className={`bg-white/90 backdrop-blur-sm rounded-[2.8rem] p-7 shadow-xl flex items-center border ${T.border} relative overflow-hidden text-center`}>
+                <div className="flex-shrink-0 relative">
+                  <div className={`p-[4px] rounded-[42px] shadow-2xl`} style={{ background: D.diagonal }}>
+                    <img src={D.p} className={`w-[125px] h-[165px] rounded-[38px] object-cover border-2 border-white`} />
                   </div>
-               </div>
-               <button onClick={()=>setMd('cal')} className={`text-[10px] font-black uppercase tracking-widest ${T.text} bg-white px-4 py-2 rounded-full border ${T.navBorder} shadow-sm active:scale-90 transition-all text-center`}>進入行事曆</button>
-            </div>
-            <div className="space-y-3 text-center">
-               {weeklyEvents.length > 0 ? weeklyEvents.map(e => (
-                  <div key={e.id} className="bg-white/60 p-4 rounded-2xl border border-zinc-50 flex justify-between items-center text-center">
-                     <div className="text-left text-center">
-                        <div className="flex items-center gap-2">
-                           <span className={`text-[9px] font-black ${T.text} text-center`}>[{new Date(e.date).toLocaleDateString('zh-TW', {month:'short',day:'numeric'})}]</span>
-                           <p className="font-black text-gray-800 text-sm text-center">{e.title}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-center">
-                           <span className="text-[9px] font-bold text-gray-400 text-center">by {e.creator}</span>
-                           <span className="text-[9px] font-bold text-gray-400 text-center">‧ {e.time || '全天'}</span>
-                        </div>
-                     </div>
-                     <div className={`w-1.5 h-1.5 rounded-full ${T.primary} text-center`}></div>
+                </div>
+                <div className="flex-1 pl-8 pr-14 flex flex-col justify-between h-[165px] text-center">
+                  <div className="flex justify-between items-center w-full text-center">{D.n.map((char, i) => (<span key={i} className="text-3xl font-black text-gray-900 leading-none tracking-tighter">{char}</span>))}</div>
+                  <div className="flex justify-between items-center w-full py-0.5 text-center">{D.c.map((char, i) => (<span key={i} className={`text-[10px] font-black uppercase ${T.text} text-center`}>{char}</span>))}</div>
+                  <div className="flex items-center justify-between w-full text-center">
+                    <button onClick={()=>window.open(D.l.ed,'_blank')} className={`${T.primary} ${T.id==='yellow'?'text-zinc-900':'text-white'} px-4 py-2 rounded-full text-[12px] font-black shadow-lg active:scale-95 whitespace-nowrap text-center`}>教育訓練</button>
+                    <div className="flex items-center gap-1.5 text-center">
+                      <button onClick={()=>window.open(D.l.sp, '_blank')} className={`w-9 h-9 bg-yellow-400 rounded-full flex items-center justify-center shadow-md active:scale-90 font-black text-[12px] text-[#1f2937] tracking-tighter text-center`}>SP</button>
+                      <button onClick={()=>setMd('mg')} className={`w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-md active:scale-90 border ${T.navBorder} text-center`}><Svg n="bolt" c="w-5 h-5" o="#000080" /></button>
+                    </div>
                   </div>
-               )) : (
-                  <div className="py-10 opacity-30 text-center">
-                     <p className="text-[11px] font-bold text-gray-400 tracking-widest uppercase text-center text-center">本周目前尚無行程安排</p>
+                  <div className={`bg-white/50 backdrop-blur-md px-3 py-2.5 rounded-2xl border ${T.border} shadow-inner flex justify-between items-center w-full text-center`}>
+                    {D.s.map((word, i) => (<span key={i} className={`font-black text-[14px] ${T.text} uppercase tracking-widest text-center`}>{word}</span>))}
                   </div>
-               )}
-            </div>
-         </div>
-      </div>
-
-      <footer className="pb-16 flex flex-col items-center gap-6 text-center text-center">
-        <p className="opacity-30 text-[11px] font-black text-gray-500 uppercase tracking-[0.3em] text-center text-center">© 2026 AREI BRANDING SERVICE</p>
-        <div className="flex items-center gap-4 text-center">
-          <div className={`bg-white px-10 py-4 rounded-[2rem] border ${T.navBorder} shadow-sm active:scale-95 transition-all text-center text-center`}>
-             <p className={`font-black text-sm tracking-widest ${T.text} text-center`}>設計者 · A R E I 曾啟泰</p>
-             <p className="text-[10px] font-bold text-gray-400 mt-1 tracking-tighter uppercase text-center">{D.version}</p>
-          </div>
-          <button onClick={() => window.open(D.l.ant, '_blank')} className="w-16 h-16 bg-black rounded-full flex items-center justify-center shadow-lg active:scale-90 border-4 border-white/20 text-center"><Svg n="antelope" c="w-10 h-10" o="#ffffff" /></button>
-        </div>
-      </footer>
-    </div>
-  );
-
-  const CalendarView = () => (
-    <div className="max-w-[460px] mx-auto pt-20 pb-20 arei-static-fade px-4 text-center text-center">
-      <button onClick={()=>setView('main')} className="mb-6 flex items-center gap-1.5 px-4 py-2 bg-white rounded-full text-gray-500 font-black text-xs active:scale-95 transition-all shadow-sm border border-zinc-100 mx-auto text-center">
-        <Svg n="back" c="w-4 h-4" /> 返回系統封面
-      </button>
-      <div className={`bg-white rounded-[2.5rem] p-6 shadow-xl border ${T.border} mb-6 text-center`}>
-        <div className="flex justify-between items-center mb-8 px-2 text-center text-center text-center">
-           <h2 className="text-2xl font-black text-gray-900 text-center">{selectedDate.getFullYear()}年 {selectedDate.getMonth()+1}月</h2>
-           <div className="flex gap-2 text-center text-center">
-              <button onClick={()=>changeMonth(-1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-90 text-center">〈</button>
-              <button onClick={()=>changeMonth(1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-90 text-center">〉</button>
-           </div>
-        </div>
-        <div className="grid grid-cols-7 gap-1 text-center mb-2">
-          {["日","一","二","三","四","五","六"].map(d => <span key={d} className="text-[10px] font-black text-gray-300 uppercase text-center">{d}</span>)}
-        </div>
-        <div className="grid grid-cols-7 gap-1 text-center text-center">
-          {days.map((day, i) => {
-            const dStr = day ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day).toDateString() : "";
-            const hasE = events.some(e => e.date === dStr);
-            return (
-              <div key={i} onClick={() => day && (setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day)), setShowEventModal(true))} 
-                   className={`aspect-square rounded-2xl flex flex-col items-center justify-center relative cursor-pointer transition-all ${!day ? '' : 'hover:bg-gray-50'} ${dStr === now.toDateString() ? 'bg-zinc-100 ring-1 ring-zinc-200' : ''} text-center`}>
-                <span className={`text-sm font-bold ${!day ? 'opacity-0' : 'text-gray-900'} text-center`}>{day}</span>
-                {hasE && <div className={`w-1.5 h-1.5 rounded-full ${T.primary} mt-1 text-center`}></div>}
+                </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-      <div className="space-y-3 text-center">
-         <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest py-2 text-center text-center">選定日行程明細</h3>
-         {events.filter(e => e.date === selectedDate.toDateString()).length > 0 ? (
-           events.filter(e => e.date === selectedDate.toDateString()).map(e => (
-             <div key={e.id} className="bg-white p-5 rounded-[1.8rem] border border-zinc-100 shadow-sm flex justify-between items-center text-center text-center">
-                <div className="text-left text-center">
-                   <p className="font-black text-gray-900 text-lg text-center text-center">{e.title}</p>
-                   <div className="flex items-center gap-2 mt-1 text-center">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${T.iconBg} ${T.text} text-center`}>{e.time || '全天'}</span>
-                      <span className="text-[10px] font-bold text-gray-400 text-center">by {e.creator}</span>
+
+              <div className="grid grid-cols-2 gap-4 px-1 text-center">
+                {[{id:'tx',t:'租管節稅',s:'速算工具',i:'tax',l:D.l.tx},{id:'rd',t:'Rich Data',s:'數據系統',i:'rich',isP:'rd'},{id:'ht',t:'售屋節稅',s:'速算工具',i:'tax',l:D.l.hs},{id:'cl',t:'團隊好客',s:'即時租買',i:'users',l:D.l.cl}].map(f => (
+                  <div key={f.id} onClick={()=>f.isP?setMd(f.isP):window.open(f.l,'_blank')} className={`bg-white/95 rounded-[2.5rem] p-7 shadow-lg border ${f.isP ? T.border : 'border-white'} active:scale-95 cursor-pointer group text-center text-center`}>
+                    <div className={`${T.iconBg} ${T.text} w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner group-hover:scale-105 transition-transform text-center`}>
+                      {f.i==='rich' ? <span className="font-black text-xl text-center">RD</span> : <Svg n={f.i} c="w-8 h-8" o={T.id === 'white' ? '#000080' : T.hex} />}
+                    </div>
+                    <div className="font-black text-lg text-black mb-1 leading-none text-center">{f.t}</div>
+                    <div className="text-xs text-gray-600 font-bold uppercase tracking-wider text-center">{f.s}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-5 gap-1.5 px-1 text-center">
+                {[
+                  {id:'r1',t:'預備上架',n:'ls',l:D.l.ls},
+                  {id:'r2',t:'外商生活',n:'gd',l:D.l.gd},
+                  {id:'r3',t:'客服寶箱',n:'sv',l:D.l.sv},
+                  {id:'r4',t:'賀我成交',n:'t4',l:D.l.t4},
+                  {id:'r5',t:'AI指令',n:'terminal',l:D.l.mk}
+                ].map(m => (
+                  <div key={m.id} onClick={()=>window.open(m.l,'_blank')} className={`bg-white rounded-[1.8rem] aspect-square flex flex-col items-center justify-center border ${T.border} shadow-md p-1 active:scale-90 cursor-pointer text-center text-center`}>
+                    <div className={`${T.iconBg} w-11 h-11 rounded-xl flex items-center justify-center mb-1.5 shadow-inner transition-colors text-center`}><Svg n={m.n} c="w-5 h-5" o={T.id === 'white' ? '#000080' : T.hex}/></div>
+                    <div className={`text-[11px] font-black leading-tight text-gray-900 text-center`}>{m.t}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-5 px-1 text-center">
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.25em] opacity-80 py-2 text-center text-center">Smart Marketing Tools</h3>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  {[
+                    { t: 'AI 專業格局圖', l: 't1', i: 'blueprint' },
+                    { t: 'AI 數位去雜物', l: 't2', i: 'magic' },
+                    { t: '代管投報分析', l: 't3', i: 'chart' },
+                    { t: '租買評估', l: 're', i: 'evaluate' },
+                    { t: '店長美好時光', l: 'ms', i: 'star' },
+                    { t: '屋主租管年報', l: 'ar', i: 'report' }
+                  ].map((item, i) => (
+                    <div key={i} onClick={()=>window.open(D.l[item.l],'_blank')} className={`bg-white p-6 rounded-[2.2rem] font-black text-gray-900 border ${T.border} shadow-md active:scale-95 flex flex-col items-center justify-center gap-3 cursor-pointer hover:${T.iconBg} transition-all text-center`}>
+                      <div className={`${T.iconBg} w-12 h-12 rounded-xl flex items-center justify-center shadow-inner text-center`}>
+                         <Svg n={item.i} c="w-6 h-6" o={T.id === 'white' ? '#000080' : T.hex} />
+                      </div>
+                      <span className={`text-[15px] font-black tracking-tighter ${T.text} text-center`}>{item.t}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="px-1 pt-4 pb-10 text-center">
+                 <div className={`bg-white/80 backdrop-blur-md rounded-[3rem] p-8 border ${T.border} shadow-xl relative overflow-hidden text-center text-center`}>
+                    <div className="flex justify-between items-center mb-6 text-center text-center">
+                       <div className="flex items-center gap-3 text-center">
+                          <div className={`${T.iconBg} p-2.5 rounded-xl text-center`}><Svg n="calendar" c="w-5 h-5" o={T.id === 'white' ? '#000080' : T.hex} /></div>
+                          <div className="text-left text-center">
+                             <h3 className="text-lg font-black text-gray-900 tracking-tight text-center">本周行程看板</h3>
+                             <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase text-center text-center">Weekly Team Schedule</p>
+                          </div>
+                       </div>
+                       <button onClick={()=>setMd('cal')} className={`text-[10px] font-black uppercase tracking-widest ${T.text} bg-white px-4 py-2 rounded-full border ${T.navBorder} shadow-sm active:scale-90 transition-all text-center`}>進入行事曆</button>
+                    </div>
+                    <div className="space-y-3 text-center text-center text-center">
+                       {weeklyEvents.length > 0 ? weeklyEvents.map(e => (
+                          <div key={e.id} className="bg-white/60 p-4 rounded-2xl border border-zinc-50 flex justify-between items-center text-center">
+                             <div className="text-left text-center">
+                                <div className="flex items-center gap-2 text-center">
+                                   <span className={`text-[9px] font-black ${T.text} text-center`}>[{new Date(e.date).toLocaleDateString('zh-TW', {month:'short',day:'numeric'})}]</span>
+                                   <p className="font-black text-gray-800 text-sm text-center">{e.title}</p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5 text-center">
+                                   <span className="text-[9px] font-bold text-gray-400 text-center text-center">by {e.creator}</span>
+                                   <span className="text-[9px] font-bold text-gray-400 text-center text-center">‧ {e.time || '全天'}</span>
+                                </div>
+                             </div>
+                             <div className={`w-1.5 h-1.5 rounded-full ${T.primary} text-center`}></div>
+                          </div>
+                       )) : (
+                          <div className="py-10 opacity-30 text-center text-center">
+                             <p className="text-[11px] font-bold text-gray-400 tracking-widest uppercase text-center text-center">本周目前尚無行程安排</p>
+                          </div>
+                       )}
+                    </div>
+                 </div>
+              </div>
+
+              <footer className="pb-16 flex flex-col items-center gap-6 text-center text-center text-center">
+                <p className="opacity-30 text-[11px] font-black text-gray-500 uppercase tracking-[0.3em] text-center text-center">© 2026 AREI BRANDING SERVICE</p>
+                <div className="flex items-center gap-4 text-center">
+                  <div className={`bg-white px-10 py-4 rounded-[2rem] border ${T.navBorder} shadow-sm active:scale-95 transition-all text-center text-center`}>
+                     <p className={`font-black text-sm tracking-widest ${T.text} text-center`}>設計者 · A R E I 曾啟泰</p>
+                     <p className="text-[10px] font-bold text-gray-400 mt-1 tracking-tighter uppercase text-center">{D.version}</p>
+                  </div>
+                  <button onClick={() => window.open(D.l.ant, '_blank')} className="w-16 h-16 bg-black rounded-full flex items-center justify-center shadow-lg active:scale-90 border-4 border-white/20 text-center text-center text-center text-center"><Svg n="antelope" c="w-10 h-10" o="#ffffff" /></button>
+                </div>
+              </footer>
+            </div>
+          );
+
+          const CalendarView = () => (
+            <div className="max-w-[460px] mx-auto pt-20 pb-20 arei-static-fade px-4 text-center text-center">
+              <button onClick={()=>setView('main')} className="mb-6 flex items-center gap-1.5 px-4 py-2 bg-white rounded-full text-gray-500 font-black text-xs active:scale-95 transition-all shadow-sm border border-zinc-100 mx-auto text-center">
+                <Svg n="back" c="w-4 h-4" /> 返回系統封面
+              </button>
+              <div className={`bg-white rounded-[2.5rem] p-6 shadow-xl border ${T.border} mb-6 text-center`}>
+                <div className="flex justify-between items-center mb-8 px-2 text-center text-center text-center">
+                   <h2 className="text-2xl font-black text-gray-900 text-center">{selectedDate.getFullYear()}年 {selectedDate.getMonth()+1}月</h2>
+                   <div className="flex gap-2 text-center text-center text-center text-center">
+                      <button onClick={()=>changeMonth(-1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-90 text-center">〈</button>
+                      <button onClick={()=>changeMonth(1)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 active:scale-90 text-center">〉</button>
                    </div>
                 </div>
-                <button onClick={()=>deleteEvent(e.id)} className="text-red-200 hover:text-red-500 active:scale-90 p-2 text-center text-center"><Svg n="trash" c="w-4 h-4" /></button>
-             </div>
-           ))
-         ) : <p className="text-[10px] text-gray-300 font-bold py-10 text-center text-center">今日尚無登錄行程</p>}
-      </div>
-      {showEventModal && (
-        <div className="fixed inset-0 z-[11000] flex items-center justify-center px-6 text-center text-center">
-           <div className="absolute inset-0 bg-black/60 backdrop-blur-md text-center" onClick={()=>setShowEventModal(false)} />
-           <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 relative shadow-2xl arei-static-fade text-center text-center">
-              <h3 className="text-xl font-black text-gray-900 mb-6 text-center text-center text-center">新增團隊行程：{selectedDate.getDate()} 號</h3>
-              <input value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="行程內容" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold mb-3 focus:ring-2 focus:ring-zinc-200 text-center text-center" />
-              <input value={newTime} onChange={e=>setNewTime(e.target.value)} placeholder="時間 (如: 14:00)" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold mb-3 focus:ring-2 focus:ring-zinc-200 text-center text-center" />
-              <input value={newCreator} onChange={e=>setNewCreator(e.target.value)} placeholder="新增人姓名" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold mb-6 focus:ring-2 focus:ring-zinc-200 text-center text-center text-center" />
-              <div className="flex gap-2 text-center">
-                 <button onClick={()=>setShowEventModal(false)} className="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-xs text-gray-500 text-center text-center">取消</button>
-                 <button onClick={addEvent} className={`flex-1 py-4 ${T.primary} ${T.id==='yellow'?'text-zinc-900':'text-white'} rounded-2xl font-black text-xs shadow-lg text-center text-center`}>確認新增</button>
+                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                  {["日","一","二","三","四","五","六"].map(d => <span key={d} className="text-[10px] font-black text-gray-300 uppercase text-center">{d}</span>)}
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center text-center text-center text-center">
+                  {days.map((day, i) => {
+                    const dStr = day ? new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day).toDateString() : "";
+                    const hasE = events.some(e => e.date === dStr);
+                    return (
+                      <div key={i} onClick={() => day && (setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), day)), setShowEventModal(true))} 
+                           className={`aspect-square rounded-2xl flex flex-col items-center justify-center relative cursor-pointer transition-all ${!day ? '' : 'hover:bg-gray-50'} ${dStr === now.toDateString() ? 'bg-zinc-100 ring-1 ring-zinc-200' : ''} text-center text-center text-center text-center`}>
+                        <span className={`text-sm font-bold ${!day ? 'opacity-0' : 'text-gray-900'} text-center`}>{day}</span>
+                        {hasE && <div className={`w-1.5 h-1.5 rounded-full ${T.primary} mt-1 text-center`}></div>}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-           </div>
-        </div>
-      )}
-    </div>
-  );
-
-  return (
-    <div className={`font-sans text-center bg-[#f5f5f7] min-h-screen selection:bg-blue-100 transition-colors duration-500 text-center text-center`}>
-      <div className={`fixed top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br ${T.bgGlow} to-transparent blur-[120px] -z-10 opacity-60 text-center text-center`}></div>
-      
-      <nav className={`fixed top-0 left-0 w-full z-[5000] bg-white/70 backdrop-blur-xl p-4 flex items-center justify-between shadow-sm border-b ${T.navBorder} px-6 text-center text-center`}>
-        <div className="flex items-center gap-2 text-center">
-          <div className={`${T.primary} text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-md active:scale-90 transition-all text-center`}><Svg n="arei" c="w-5 h-5" o={T.id === 'yellow' ? '#1d1d1f' : '#fff'} /></div>
-          <span className="font-black text-sm text-gray-800 uppercase tracking-tighter text-center">AREI 智慧系統</span>
-        </div>
-        <div className="flex gap-2.5 bg-gray-100/50 p-1.5 rounded-full border border-gray-200/50 shadow-inner text-center">
-          {Object.values(THEMES).map(theme => (
-            <button key={theme.id} onClick={() => saveThemePref(theme)} className={`w-4.5 h-4.5 rounded-full transition-all duration-300 transform border ${curTheme.id === theme.id ? 'scale-125 ring-2 ring-white ring-offset-1 shadow-lg z-10' : 'opacity-40 hover:opacity-100 hover:scale-110'}`} style={{ backgroundColor: theme.hex, width: '18px', height: '18px' }} title={theme.n} />
-          ))}
-        </div>
-      </nav>
-
-      {/* 視圖分離渲染，確保焦點穩定 */}
-      {view === 'calendar' ? <CalendarView /> : <MainContent />}
-
-      {/* OTP 安全認證視窗 */}
-      {md && (
-        <div className="fixed inset-0 z-[11000] flex items-center justify-center px-6 text-center text-center">
-          <div className="absolute inset-0 bg-black/95 backdrop-blur-2xl text-center text-center" onClick={()=>{setMd(null); setPn('');}} />
-          <div className="bg-zinc-900 w-full max-w-sm rounded-[3.5rem] p-10 relative shadow-2xl arei-static-fade border border-white/10 overflow-hidden text-center text-center text-center">
-            <button onClick={(e)=>{ e.stopPropagation(); setMd(null); setPn(''); }} className="absolute top-7 left-7 z-[12000] flex items-center gap-1.5 px-3.5 py-2.5 bg-white/15 hover:bg-white/25 active:scale-90 transition-all rounded-full border border-white/10 text-white shadow-xl backdrop-blur-md group text-center text-center">
-                <Svg n="back" c="w-4 h-4" o="currentColor" />
-                <span className="text-[11px] font-black tracking-widest uppercase opacity-80 group-hover:opacity-100 text-center text-center">返回主選單</span>
-            </button>
-            <div className={`bg-white/5 ${T.text} w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8 text-center text-center text-center`}><Svg n="shield" c="w-10 h-10" o={T.id === 'white' ? '#2563eb' : T.hex} /></div>
-            <h3 className="text-2xl font-black text-white mb-2 tracking-tight text-center text-center text-center text-center">System Secured</h3>
-            <p className={`text-[11px] font-bold mb-10 tracking-[0.25em] uppercase ${T.text} text-center text-center text-center text-center`}>身分認證 · 主題加密</p>
-            <div className={`flex justify-center gap-2.5 mb-10 relative z-10 text-center text-center text-center`}>
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className={`w-9 h-14 rounded-2xl flex items-center justify-center text-3xl font-black border-2 ${pn.length > i ? `${T.primary} border-white/30 ${T.id==='yellow'?'text-zinc-900':'text-white'}` : 'bg-zinc-800 border-zinc-700 text-zinc-600'} text-center text-center`} style={{ boxShadow: pn.length > i ? `0 0 20px ${T.otp}` : 'none' }}>{pn[i] ? pn[i] : '•'}</div>
-              ))}
+              <div className="space-y-3 text-center text-center text-center text-center">
+                 <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest py-2 text-center text-center text-center">選定日行程明細</h3>
+                 {events.filter(e => e.date === selectedDate.toDateString()).length > 0 ? (
+                   events.filter(e => e.date === selectedDate.toDateString()).map(e => (
+                     <div key={e.id} className="bg-white p-5 rounded-[1.8rem] border border-zinc-100 shadow-sm flex justify-between items-center text-center text-center text-center">
+                        <div className="text-left text-center">
+                           <p className="font-black text-gray-900 text-lg text-center text-center text-center">{e.title}</p>
+                           <div className="flex items-center gap-2 mt-1 text-center">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${T.iconBg} ${T.text} text-center text-center`}>{e.time || '全天'}</span>
+                              <span className="text-[10px] font-bold text-gray-400 text-center">by {e.creator}</span>
+                           </div>
+                        </div>
+                        <button onClick={()=>deleteEvent(e.id)} className="text-red-200 hover:text-red-500 active:scale-90 p-2 text-center text-center"><Svg n="trash" c="w-4 h-4" /></button>
+                     </div>
+                   ))
+                 ) : <p className="text-[10px] text-gray-300 font-bold py-10 text-center text-center text-center">今日尚無登錄行程</p>}
+              </div>
+              {showEventModal && (
+                <div className="fixed inset-0 z-[11000] flex items-center justify-center px-6 text-center text-center text-center text-center">
+                   <div className="absolute inset-0 bg-black/60 backdrop-blur-md text-center" onClick={()=>setShowEventModal(false)} />
+                   <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 relative shadow-2xl arei-static-fade text-center text-center text-center text-center">
+                      <h3 className="text-xl font-black text-gray-900 mb-6 text-center text-center text-center text-center">新增團隊行程：{selectedDate.getDate()} 號</h3>
+                      <input value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="行程內容" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold mb-3 focus:ring-2 focus:ring-zinc-200 text-center text-center text-center" />
+                      <input value={newTime} onChange={e=>setNewTime(e.target.value)} placeholder="時間 (如: 14:00)" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold mb-3 focus:ring-2 focus:ring-zinc-200 text-center text-center text-center" />
+                      <input value={newCreator} onChange={e=>setNewCreator(e.target.value)} placeholder="新增人姓名" className="w-full bg-gray-50 border-none rounded-2xl py-4 px-5 text-sm font-bold mb-6 focus:ring-2 focus:ring-zinc-200 text-center text-center text-center text-center" />
+                      <div className="flex gap-2 text-center text-center text-center text-center text-center">
+                         <button onClick={()=>setShowEventModal(false)} className="flex-1 py-4 bg-gray-100 rounded-2xl font-black text-xs text-gray-500 text-center text-center">取消</button>
+                         <button onClick={addEvent} className={`flex-1 py-4 ${T.primary} ${T.id==='yellow'?'text-zinc-900':'text-white'} rounded-2xl font-black text-xs shadow-lg text-center text-center`}>確認新增</button>
+                      </div>
+                   </div>
+                </div>
+              )}
             </div>
-            <input ref={inputRef} type="tel" autoFocus value={pn} onChange={e => setPn(e.target.value.slice(0, 6))} className="absolute bottom-0 left-0 w-full h-1/2 opacity-0 cursor-default z-0 text-center text-center" />
-            {err ? <p className="text-red-500 text-sm font-bold text-center text-center text-center">認證錯誤</p> : <p className="text-zinc-600 text-[10px] font-bold tracking-widest uppercase text-center text-center text-center">AWAITING INPUT...</p>}
-            <button onClick={()=>{setMd(null); setPn('');}} className="mt-12 text-zinc-500 text-xs font-black uppercase tracking-widest active:opacity-50 text-center text-center text-center">Cancel Access</button>
-          </div>
-        </div>
-      )}
+          );
 
-      <style>{`
-        .arei-static-fade { animation: f 0.4s ease-out forwards; }
-        @keyframes f { from { opacity: 0; } to { opacity: 1; } }
-      `}</style>
-    </div>
-  );
-};
+          return (
+            <div className={`font-sans text-center bg-[#f5f5f7] min-h-screen selection:bg-blue-100 transition-colors duration-500 text-center text-center text-center text-center`}>
+              <div className={`fixed top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br ${T.bgGlow} to-transparent blur-[120px] -z-10 opacity-60 text-center text-center text-center`}></div>
+              <nav className={`fixed top-0 left-0 w-full z-[5000] bg-white/70 backdrop-blur-xl p-4 flex items-center justify-between shadow-sm border-b ${T.navBorder} px-6 text-center text-center text-center text-center`}>
+                <div className="flex items-center gap-2 text-center text-center text-center text-center">
+                  <div className={`${T.primary} text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-md active:scale-90 transition-all text-center`}><Svg n="arei" c="w-5 h-5" o={T.id === 'yellow' ? '#1d1d1f' : '#fff'} /></div>
+                  <span className="font-black text-sm text-gray-800 uppercase tracking-tighter text-center">AREI 智慧系統</span>
+                </div>
+                <div className="flex gap-2.5 bg-gray-100/50 p-1.5 rounded-full border border-gray-200/50 shadow-inner text-center text-center text-center text-center">
+                  {Object.values(THEMES).map(theme => (
+                    <button key={theme.id} onClick={() => saveThemePref(theme)} className={`w-4.5 h-4.5 rounded-full transition-all duration-300 transform border ${curTheme.id === theme.id ? 'scale-125 ring-2 ring-white ring-offset-1 shadow-lg z-10' : 'opacity-40 hover:opacity-100 hover:scale-110'}`} style={{ backgroundColor: theme.hex, width: '18px', height: '18px' }} title={theme.n} />
+                  ))}
+                </div>
+              </nav>
+              {view === 'calendar' ? <CalendarView /> : <MainContent />}
+              {md && (
+                <div className="fixed inset-0 z-[11000] flex items-center justify-center px-6 text-center text-center text-center text-center text-center text-center">
+                  <div className="absolute inset-0 bg-black/95 backdrop-blur-2xl text-center text-center text-center text-center text-center text-center" onClick={()=>{setMd(null); setPn('');}} />
+                  <div className="bg-zinc-900 w-full max-w-sm rounded-[3.5rem] p-10 relative shadow-2xl arei-static-fade border border-white/10 overflow-hidden text-center text-center text-center text-center text-center text-center">
+                    <button onClick={(e)=>{ e.stopPropagation(); setMd(null); setPn(''); }} className="absolute top-7 left-7 z-[12000] flex items-center gap-1.5 px-3.5 py-2.5 bg-white/15 hover:bg-white/25 active:scale-90 transition-all rounded-full border border-white/10 text-white shadow-xl backdrop-blur-md group text-center text-center text-center text-center text-center text-center">
+                        <Svg n="back" c="w-4 h-4" o="currentColor" />
+                        <span className="text-[11px] font-black tracking-widest uppercase opacity-80 group-hover:opacity-100 text-center text-center text-center text-center text-center text-center">返回主選單</span>
+                    </button>
+                    <div className={`bg-white/5 ${T.text} w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-8 text-center text-center text-center text-center text-center text-center text-center`}><Svg n="shield" c="w-10 h-10" o={T.id === 'white' ? '#2563eb' : T.hex} /></div>
+                    <h3 className="text-2xl font-black text-white mb-2 tracking-tight text-center text-center text-center text-center text-center text-center text-center">System Secured</h3>
+                    <p className={`text-[11px] font-bold mb-10 tracking-[0.25em] uppercase ${T.text} text-center text-center text-center text-center text-center text-center text-center`}>身分認證 · 主題加密</p>
+                    <div className={`flex justify-center gap-2.5 mb-10 relative z-10 text-center text-center text-center text-center text-center text-center text-center`}>
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className={`w-9 h-14 rounded-2xl flex items-center justify-center text-3xl font-black border-2 ${pn.length > i ? `${T.primary} border-white/30 ${T.id==='yellow'?'text-zinc-900':'text-white'}` : 'bg-zinc-800 border-zinc-700 text-zinc-600'} text-center text-center text-center text-center text-center text-center text-center`} style={{ boxShadow: pn.length > i ? `0 0 20px ${T.otp}` : 'none' }}>{pn[i] ? pn[i] : '•'}</div>
+                      ))}
+                    </div>
+                    <input ref={inputRef} type="tel" autoFocus value={pn} onChange={e => setPn(e.target.value.slice(0, 6))} className="absolute bottom-0 left-0 w-full h-1/2 opacity-0 cursor-default z-0 text-center text-center text-center text-center text-center text-center text-center" />
+                    {err ? <p className="text-red-500 text-sm font-bold text-center text-center text-center text-center text-center text-center text-center">認證錯誤</p> : <p className="text-zinc-600 text-[10px] font-bold tracking-widest uppercase text-center text-center text-center text-center text-center text-center text-center">AWAITING INPUT...</p>}
+                    <button onClick={()=>{setMd(null); setPn('');}} className="mt-12 text-zinc-500 text-xs font-black uppercase tracking-widest active:opacity-50 text-center text-center text-center text-center text-center text-center text-center">Cancel Access</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        };
 
-export default App;
+        const rootElement = document.getElementById('root');
+        const root = createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>
