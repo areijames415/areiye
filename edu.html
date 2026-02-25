@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教育訓練系統 - AREI 智慧門戶</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; }
+        .arei-static-fade { animation: f 0.4s ease-out forwards; }
+        @keyframes f { from { opacity: 0; } to { opacity: 1; } }
+        /* 隱藏捲軸但保持功能 */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 selection:bg-yellow-200">
+    <div id="root"></div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+                "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+                "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"
+            }
+        }
+    </script>
+
+    <script type="text/babel" data-type="module">
+        import { initializeApp } from 'firebase/app';
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+        import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+
+        const { useState, useEffect } = React;
+        
+        // 從全域物件讀取 Lucide 圖示
+        const { 
+            CheckCircle2, Circle, ClipboardList, BookOpen, Wrench, ShieldCheck, 
+            Send, ChevronRight, Star, Award, ExternalLink, Globe, Lock, Crown, 
+            PlayCircle, GanttChart, ArrowRightCircle, Key, Handshake, 
+            MessageSquareShare, Calendar, ArrowLeft, Stamp, Calculator, 
+            CalendarDays, Target, FileText, AlertCircle, TrendingUp, 
+            Gavel, Bot, BrainCircuit, StickyNote, Download, 
+            MailPlus, Pencil, Save, Printer, Fingerprint, Coins
+        } = window.lucide;
+
+        // --- Firebase 配置 (此處會讀取全域變數或您可手動填入) ---
+        // 建議在 GitHub Pages 設定中確保 __firebase_config 已定義，或在此處直接替換為 JSON
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "請替換您的API_KEY", authDomain: "...", projectId: "...", storageBucket: "...", messagingSenderId: "...", appId: "..." };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'arei-master-v53';
+
+        // --- 靜態數據彙整 ---
+        const allRecipients = "areijames415@gmail.com,arei073319000@gmail.com,areisophie@gmail.com";
+        const courseUrl = "https://www.canva.com/design/DAF9B56b8mY/...";
+
+        const teamEvents = [
+            { title: '1. 租轉售資料開發實務', host: '曾店長', desc: '將現有租賃案源轉化為高效率買賣委託。' },
+            { title: '2. 新人工具使用課程', host: '曾店長', desc: 'AREI 官網、後台管理實作課程。' },
+            { title: '3. 代銷+管理室開發拜訪', host: '淵店長', desc: '新案場代銷開發技巧深度解析。' },
+            { title: '4. 開發實務操作', host: '全體店長', desc: '實地走訪商圈現場教學。' },
+            { title: '5. 外商企業多元維繫', host: '全體店長', desc: '針對外商客群的標準化服務流程。' }
+        ];
+
+        const adminTasksRaw = [
+            { id: 'T1', category: '行政協助', text: '1. 環境薪資認識', desc: '公司環境設備說明 / 薪資制度說明' },
+            { id: 'T2', category: '行政協助', text: '2. 官方文件準備', desc: '相片、後台、姓名貼準備' },
+            { id: 'T3', category: '行政協助', text: '3. 作業文件準備', desc: '開發/回報表/周行程資料夾' },
+            { id: 'T4', category: '學習原則', text: '4. 課程連結開啟', desc: '開啟 AREI 後台教育課程' },
+            { id: 'T5', category: '學習原則', text: '5. 值班行政了解', desc: '租賃上架與行政配合事項' }
+        ];
+
+        const leaseObsRaw = [
+            { id: 'A1', title: '案件上架 (租賃) + CS製作', limit: 3, cat: '活動 A 開發' },
+            { id: 'A5', title: '陪同開發委託', limit: 10, cat: '活動 A 開發' },
+            { id: 'B1', title: '陪同帶看 + I 智慧系統使用', limit: 5, cat: '活動 B 行銷' }
+        ];
+
+        const salesObsRaw = [
+            { id: 'S1', title: '買賣 12 週行銷計畫實施觀摩', limit: 3, cat: '買賣專項' },
+            { id: 'S3', title: '見面談議價技巧觀摩', limit: 3, cat: '買賣專項' }
+        ];
+
+        const App = () => {
+            const [user, setUser] = useState(null);
+            const [activeTab, setActiveTab] = useState('notebook');
+            const [obsMainTab, setObsMainTab] = useState('lease');
+            const [userProfile, setUserProfile] = useState({ name: '', branch: '巨蛋店', email: '' });
+            const [progress, setProgress] = useState(0);
+            const [notes, setNotes] = useState({}); 
+            const [observations, setObservations] = useState({}); 
+            const [taskStatus, setTaskStatus] = useState({});
+
+            useEffect(() => {
+                const unsubscribe = onAuthStateChanged(auth, setUser);
+                signInAnonymously(auth);
+                return () => unsubscribe();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                const dataDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'v53_master');
+                return onSnapshot(dataDoc, (snap) => {
+                    if (snap.exists()) {
+                        const d = snap.data();
+                        setNotes(d.notes || {});
+                        setObservations(d.observations || {});
+                        setTaskStatus(d.taskStatus || {});
+                        setUserProfile(prev => ({ ...prev, ...d.profile }));
+                    }
+                });
+            }, [user]);
+
+            useEffect(() => {
+                const completed = Object.values(taskStatus).filter(Boolean).length;
+                setProgress(Math.round((completed / adminTasksRaw.length) * 100));
+            }, [taskStatus]);
+
+            const saveToCloud = async (update) => {
+                if (!user) return;
+                const dataDoc = doc(db, 'artifacts', appId, 'users', user.uid, 'data', 'v53_master');
+                await setDoc(dataDoc, { ...update }, { merge: true });
+            };
+
+            const handlePrintPDF = () => {
+                const printWindow = window.open('', '_blank');
+                let html = `<html><body><h1>培訓報告 - ${userProfile.name}</h1>`;
+                Object.entries(notes).forEach(([k, v]) => {
+                    if (v.trim()) html += `<h3>${k}</h3><p>${v}</p>`;
+                });
+                html += `</body></html>`;
+                printWindow.document.write(html);
+                printWindow.document.close();
+                printWindow.print();
+            };
+
+            const markSaved = (title) => alert(`「${title}」內容已成功同步！`);
+
+            return (
+                <div className="min-h-screen p-4 md:p-6 arei-static-fade">
+                    {/* 返回按鈕 (設定路徑關鍵) */}
+                    <button onClick={() => window.location.href='../index.html'} className="fixed bottom-8 right-8 bg-black text-white p-4 rounded-full shadow-2xl z-50 flex items-center gap-2 font-black">
+                        <ArrowLeft size={20} /> 返回門戶首頁
+                    </button>
+
+                    <header className="max-w-5xl mx-auto mb-6 bg-white p-6 rounded-3xl shadow-xl border-b-8 border-yellow-400 font-black">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-3">
+                                <Crown className="text-emerald-800" size={32} />
+                                <div>
+                                    <h1 className="text-2xl uppercase tracking-tighter">御前權威</h1>
+                                    <p className="text-xs opacity-60">教育訓練系統 V53 Master</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-[10px] text-emerald-800 font-black tracking-widest uppercase">Progress: {progress}%</div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                            <input type="text" value={userProfile.name} onChange={(e) => { const v = e.target.value; setUserProfile(p=>({...p, name:v})); saveToCloud({profile:{...userProfile, name:v}}); }} className="bg-slate-50 p-3 rounded-2xl border-none font-black text-slate-900 focus:ring-2 focus:ring-yellow-400" placeholder="業務姓名" />
+                            <input type="text" value={userProfile.branch} onChange={(e) => { const v = e.target.value; setUserProfile(p=>({...p, branch:v})); saveToCloud({profile:{...userProfile, branch:v}}); }} className="bg-slate-50 p-3 rounded-2xl border-none font-black text-slate-900 focus:ring-2 focus:ring-yellow-400" placeholder="分店" />
+                            <input type="email" value={userProfile.email} onChange={(e) => { const v = e.target.value; setUserProfile(p=>({...p, email:v})); saveToCloud({profile:{...userProfile, email:v}}); }} className="bg-slate-50 p-3 rounded-2xl border-none font-black text-slate-900 focus:ring-2 focus:ring-yellow-400" placeholder="個人 Email" />
+                        </div>
+                    </header>
+
+                    <nav className="max-w-5xl mx-auto flex gap-3 mb-8 overflow-x-auto scrollbar-hide">
+                        <button onClick={() => setActiveTab('notebook')} className={`px-6 py-4 rounded-full text-sm font-black transition-all ${activeTab === 'notebook' ? 'bg-emerald-900 text-white shadow-xl' : 'bg-white shadow-sm'}`}>我的記事本</button>
+                        <button onClick={() => setActiveTab('team_events')} className={`px-6 py-4 rounded-full text-sm font-black transition-all ${activeTab === 'team_events' ? 'bg-emerald-900 text-white shadow-xl' : 'bg-white shadow-sm'}`}>團隊行程</button>
+                        <button onClick={() => setActiveTab('rookie')} className={`px-6 py-4 rounded-full text-sm font-black transition-all ${activeTab === 'rookie' ? 'bg-emerald-900 text-white shadow-xl' : 'bg-white shadow-sm'}`}>行政協助</button>
+                        <button onClick={() => setActiveTab('obs')} className={`px-6 py-4 rounded-full text-sm font-black transition-all ${activeTab === 'obs' ? 'bg-emerald-900 text-white shadow-xl' : 'bg-white shadow-sm'}`}>心得回報</button>
+                    </nav>
+
+                    <main className="max-w-5xl mx-auto pb-20">
+                        {activeTab === 'notebook' && (
+                            <div className="bg-emerald-950 text-white p-12 rounded-[50px] shadow-3xl border-b-[20px] border-yellow-400">
+                                <h2 className="text-4xl italic mb-6 font-black underline decoration-yellow-400">雲端學習心得總彙整</h2>
+                                <div className="flex gap-4">
+                                    <button onClick={handlePrintPDF} className="bg-white text-emerald-950 px-8 py-4 rounded-2xl font-black flex items-center gap-2"><Printer /> 匯出報告</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'team_events' && teamEvents.map((event, i) => (
+                            <div key={i} className="bg-white p-10 rounded-[50px] border-4 border-emerald-50 shadow-xl mb-6">
+                                <h3 className="text-2xl font-black mb-4">{event.title}</h3>
+                                <textarea 
+                                    className="w-full p-6 bg-slate-50 border-4 border-emerald-100 rounded-[30px] font-black min-h-[160px]"
+                                    value={notes[event.title] || ""}
+                                    onChange={(e) => { const v = e.target.value; setNotes(p => ({...p, [event.title]: v})); saveToCloud({notes: {...notes, [event.title]: v}}); }}
+                                    placeholder="紀錄本次行程心得..."
+                                />
+                            </div>
+                        ))}
+
+                        {activeTab === 'rookie' && adminTasksRaw.map(task => (
+                            <div key={task.id} className="bg-white rounded-[60px] p-8 border-4 border-emerald-100 shadow-xl mb-6 flex items-center gap-6">
+                                <div onClick={() => { const v = !taskStatus[task.id]; setTaskStatus(p=>({...p, [task.id]:v})); saveToCloud({taskStatus: {...taskStatus, [task.id]:v}}); }} className={`w-12 h-12 rounded-xl flex items-center justify-center cursor-pointer transition-all ${taskStatus[task.id] ? 'bg-yellow-400 shadow-lg' : 'bg-slate-100'}`}>
+                                    {taskStatus[task.id] && <CheckCircle2 className="text-white" size={24} />}
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-2xl font-black italic">{task.text}</h3>
+                                    <p className="text-slate-500">{task.desc}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
