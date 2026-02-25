@@ -1,13 +1,13 @@
 // [AREI-SMART-CONFIG] 全域核心設定檔 ⚙️
 window.AREI_CONFIG = {
-    // 1. Firebase 雲端配置 (請將你 Firebase Console 的資訊貼在這裡)
+    // 1. Firebase 雲端配置 (已根據你的截圖更新)
     firebase: {
-        apiKey: "你的_API_KEY",
-        authDomain: "你的_PROJECT_ID.firebaseapp.com",
-        projectId: "你的_PROJECT_ID",
-        storageBucket: "你的_PROJECT_ID.appspot.com",
-        messagingSenderId: "你的_SENDER_ID",
-        appId: "你的_APP_ID"
+        apiKey: "AIzaSyCNWcbhuQ1qaTK-H_L6cmnYeT_zrU3OTgY",
+        authDomain: "areiye.firebaseapp.com",
+        projectId: "areiye",
+        storageBucket: "areiye.firebasestorage.app",
+        messagingSenderId: "810066009573",
+        appId: "1:810066009573:web:2a6304853dbdb58d7fa30c"
     },
 
     // 2. 系統安全密碼 🔑
@@ -16,7 +16,7 @@ window.AREI_CONFIG = {
     // 3. 頁面連結導航清單 🔗
     pages: {
         index: "./index.html",
-        edu: "./edu.html" // 這是你的第二個分頁
+        edu: "./edu.html" 
     }
 };
 
