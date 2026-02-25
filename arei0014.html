@@ -1,0 +1,311 @@
+import React, { useState, useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
+import { Calculator, TrendingUp, AlertTriangle, CheckCircle2, DollarSign, Calendar, Info, Percent, Coins, Wrench, Home, BarChart3, ShieldAlert, PieChart, ArrowRightLeft, FileText, Landmark, UserCheck } from 'lucide-react';
+
+const App = () => {
+  const [inputs, setInputs] = useState({
+    tenant_rent: "",
+    landlord_rent: "",
+    init_cost: "",
+    grace_period: "",
+    vacancy_months: "",
+    lease_years: "",
+    fee_rate: 5, 
+    brokerage_fee_months: 1, // 代管模式的仲介費
+    master_brokerage_months: 0.5, // 包租模式的開發費 (新加入)
+    interest_rate: "",
+    building_age: "",
+    maintenance_rate: "",
+    tax_rate: 7 
+  });
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    let val = value === "" ? "" : parseFloat(value);
+    
+    if (name === 'building_age' && val !== "") {
+      const suggestedRate = val > 10 ? 5 : 3;
+      setInputs(prev => ({
+        ...prev,
+        building_age: val,
+        maintenance_rate: suggestedRate
+      }));
+    } else {
+      setInputs(prev => ({
+        ...prev,
+        [name]: val
+      }));
+    }
+  };
+
+  const analysis = useMemo(() => {
+    const d = Object.keys(inputs).reduce((acc, key) => {
+      acc[key] = inputs[key] === "" ? 0 : Number(inputs[key]);
+      return acc;
+    }, {});
+
+    const { 
+      tenant_rent, landlord_rent, init_cost, grace_period, 
+      vacancy_months, lease_years, fee_rate, interest_rate, maintenance_rate, tax_rate, 
+      brokerage_fee_months, master_brokerage_months
+    } = d;
+
+    const monthsPerYear = 12 - vacancy_months;
+    const annualRevenue = tenant_rent * monthsPerYear;
+    const totalRevenueOverLease = annualRevenue * (lease_years || 0);
+    
+    // --- 【代管模式】收益 ---
+    const managementInitialIncome = tenant_rent * brokerage_fee_months;
+    const managementMonthlyFeeTotal = annualRevenue * (fee_rate / 100) * (lease_years || 0);
+    const managementTotalProfit = managementInitialIncome + managementMonthlyFeeTotal;
+
+    // --- 【包租模式】收益 ---
+    const firstYearRentCost = landlord_rent * (12 - grace_period);
+    const annualRentCost = landlord_rent * 12;
+    const totalRentOutlay = firstYearRentCost + (annualRentCost * Math.max(0, (lease_years || 0) - 1));
+    const totalInterestCost = init_cost * (interest_rate / 100) * (lease_years || 0);
+    const totalMaintenanceCost = annualRevenue * (maintenance_rate / 100) * (lease_years || 0);
+    const totalTaxCost = annualRevenue * (tax_rate / 100) * (lease_years || 0);
+    
+    // 包租模式的首筆開發費收入
+    const masterInitialIncome = tenant_rent * master_brokerage_months;
+    
+    // 包租模式最終淨利 = 開發費 + 租金差額 - (裝修 + 利息 + 維修 + 稅金)
+    const masterTotalProfit = masterInitialIncome + totalRevenueOverLease - totalRentOutlay - init_cost - totalInterestCost - totalMaintenanceCost - totalTaxCost;
+    
+    const profitDiff = masterTotalProfit - managementTotalProfit;
+    
+    const annualNetMargin = (lease_years > 0) ? (masterTotalProfit + init_cost - masterInitialIncome) / lease_years : 0;
+    const breakEvenYears = (annualNetMargin > 0 && init_cost > 0) ? ((init_cost - masterInitialIncome) / annualNetMargin).toFixed(1) : "---";
+    const roi = init_cost > 0 ? ((masterTotalProfit / init_cost) * 100).toFixed(1) : "0";
+    const moic = init_cost > 0 ? (masterTotalProfit / init_cost + 1).toFixed(2) : "0";
+
+    let finalRecommendation = "資料待填";
+    let recommendationColor = "text-slate-400";
+    if (tenant_rent && lease_years) {
+      if (masterTotalProfit <= 0 || profitDiff <= 0) {
+        finalRecommendation = "建議代管";
+        recommendationColor = "text-rose-600 border-rose-600";
+      } else if (profitDiff < (managementTotalProfit * 0.4)) { 
+        finalRecommendation = "傾向代管";
+        recommendationColor = "text-amber-600 border-amber-600";
+      } else {
+        finalRecommendation = "建議包租";
+        recommendationColor = "text-blue-600 border-blue-600";
+      }
+    }
+
+    const chartData = Array.from({ length: Math.max(1, (lease_years || 5)) + 1 }, (_, i) => {
+      // 包租累積：第 0 年包含 [開發費 - 前期投入]
+      let mCum = -init_cost + masterInitialIncome;
+      if (i > 0) {
+        const netPerYear = (annualRevenue - annualRentCost - (lease_years > 0 ? (totalInterestCost/lease_years + totalMaintenanceCost/lease_years + totalTaxCost/lease_years) : 0));
+        mCum += (netPerYear * i) + (landlord_rent * grace_period);
+      }
+      
+      // 代管累積
+      let mgmtCum = i === 0 ? 0 : managementInitialIncome + (annualRevenue * (fee_rate / 100) * i);
+      
+      return {
+        year: `第${i}年`,
+        包租總收益: Math.round(mCum),
+        代管總收益: Math.round(mgmtCum)
+      };
+    });
+
+    return {
+      masterTotalProfit,
+      managementTotalProfit,
+      managementInitialIncome,
+      managementMonthlyFeeTotal,
+      masterInitialIncome,
+      profitDiff,
+      breakEvenYears,
+      roi,
+      moic,
+      finalRecommendation,
+      recommendationColor,
+      totalInterestCost,
+      totalMaintenanceCost,
+      totalTaxCost,
+      chartData
+    };
+  }, [inputs]);
+
+  const inputRows = [
+    [
+      { label: "預估轉租價 (月)", name: "tenant_rent", icon: <DollarSign size={16} /> },
+      { label: "大房東底價 (月)", name: "landlord_rent", icon: <DollarSign size={16} /> }
+    ],
+    [
+      { label: "前期投入總額", name: "init_cost", icon: <Coins size={16} /> },
+      { label: "免租期 (月)", name: "grace_period", icon: <Calendar size={16} /> }
+    ],
+    [
+      { label: "預估空置 (月/年)", name: "vacancy_months", icon: <Calendar size={16} /> },
+      { label: "合約年限 (年)", name: "lease_years", icon: <Calendar size={16} /> }
+    ],
+    [
+      { label: "代管仲介費 (月)", name: "brokerage_fee_months", icon: <UserCheck size={16} /> },
+      { label: "代管費率 (%)", name: "fee_rate", icon: <Percent size={16} /> }
+    ],
+    [
+      { label: "包租開發費 (月)", name: "master_brokerage_months", icon: <UserCheck size={16} /> },
+      { label: "稅金成本 (%)", name: "tax_rate", icon: <Landmark size={16} /> }
+    ],
+    [
+      { label: "資金利息 (%)", name: "interest_rate", icon: <TrendingUp size={16} /> },
+      { label: "屋齡 (年)", name: "building_age", icon: <Home size={16} />, customStyle: "bg-blue-50 p-2 rounded-xl" }
+    ]
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-100 p-3 sm:p-4 md:p-8 font-sans text-slate-900 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto">
+        <header className="mb-6 sm:mb-10 border-b-4 border-slate-300 pb-4 sm:pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 flex items-center gap-2">
+              <Calculator className="text-blue-600 shrink-0" size={32} />
+              御前權威：仲介精算決策系統
+            </h1>
+            <p className="text-slate-600 font-bold mt-1 uppercase tracking-tight text-xs sm:text-sm italic">考慮包租開發費與代管服務費之真實對比</p>
+          </div>
+          <div className="flex gap-2 sm:gap-4">
+            <div className="bg-white px-3 py-1 rounded-xl shadow-sm border-2 border-blue-600 text-blue-600 font-black text-[10px] sm:text-xs">包租模式 (價差+開發費)</div>
+            <div className="bg-white px-3 py-1 rounded-xl shadow-sm border-2 border-emerald-600 text-emerald-600 font-black text-[10px] sm:text-xs">代管模式 (仲介費+管理費)</div>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+          <div className="lg:col-span-5 space-y-4 md:space-y-6">
+            <div className="bg-white p-4 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-xl border-2 border-slate-200">
+              <h2 className="text-xl sm:text-2xl font-black mb-6 text-slate-900 border-l-8 border-blue-600 pl-4 uppercase tracking-tighter">參數錄入</h2>
+              <div className="space-y-4 sm:space-y-6">
+                {inputRows.map((pair, idx) => (
+                  <div key={idx} className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                    {pair.map(field => (
+                      <div key={field.name} className={`flex flex-col ${field.customStyle || ''}`}>
+                        <label className="flex items-center gap-2 text-xs sm:text-base font-black text-slate-900 mb-1 sm:mb-3">
+                          {field.icon}{field.label}
+                        </label>
+                        <input
+                          type="number"
+                          name={field.name}
+                          value={inputs[field.name]}
+                          onChange={handleInputChange}
+                          placeholder="---"
+                          className="w-full px-3 sm:px-5 py-3 sm:py-5 bg-slate-50 border-2 border-slate-200 rounded-xl sm:rounded-2xl focus:border-blue-600 focus:bg-white outline-none text-xl sm:text-2xl font-bold text-slate-900 shadow-inner"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={`p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] shadow-2xl text-white transition-all duration-500 border-b-[8px] sm:border-b-[12px] border-black/20 ${analysis.finalRecommendation === "建議包租" ? 'bg-gradient-to-br from-blue-700 via-blue-800 to-slate-900' : 'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900'}`}>
+               <div className="text-[10px] sm:text-xs font-black text-blue-300 mb-2 uppercase tracking-[0.2em]">權威結論</div>
+               <div className={`text-4xl sm:text-7xl font-black mb-4 tracking-tighter leading-tight ${analysis.recommendationColor}`}>
+                 {analysis.finalRecommendation}
+               </div>
+               <p className="text-xs sm:text-base font-bold opacity-80 leading-relaxed border-t border-white/10 pt-4 italic">
+                 {analysis.profitDiff > 0 
+                  ? `計入包租開發費後，包租比代管全期多獲利 $${Math.round(analysis.profitDiff).toLocaleString()}。`
+                  : "目前包租與代管利潤差距有限，代管模式配合一次性仲介費回報更迅速。"}
+               </p>
+            </div>
+          </div>
+
+          <div className="lg:col-span-7 space-y-6 md:space-y-10">
+            <section className="bg-white p-4 sm:p-10 rounded-[2.5rem] shadow-sm border-2 border-slate-200">
+              <h3 className="text-xl sm:text-2xl font-black mb-6 sm:mb-10 flex items-center gap-3 text-slate-900">
+                <BarChart3 className="text-blue-600" size={28} />
+                REPORT 1: 仲介角色收益對照
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-10">
+                <div className="p-5 sm:p-8 bg-blue-600 text-white rounded-[2rem] shadow-xl">
+                   <div className="text-[10px] sm:text-xs font-black opacity-70 mb-1 tracking-widest uppercase">模式 A: 包租全期淨利</div>
+                   <div className="text-2xl sm:text-4xl font-black mb-3">${Math.round(analysis.masterTotalProfit).toLocaleString()}</div>
+                   <div className="flex flex-col gap-1 text-[9px] sm:text-[10px] font-black bg-white/10 p-2 rounded-xl">
+                      <span>開發費收入: ${Math.round(analysis.masterInitialIncome).toLocaleString()}</span>
+                      <span>回本年限: {analysis.breakEvenYears}y</span>
+                   </div>
+                </div>
+                <div className="p-5 sm:p-8 bg-emerald-600 text-white rounded-[2rem] shadow-xl">
+                   <div className="text-[10px] sm:text-xs font-black opacity-70 mb-1 tracking-widest uppercase">模式 B: 仲介+代管全期收益</div>
+                   <div className="text-2xl sm:text-4xl font-black mb-3">${Math.round(analysis.managementTotalProfit).toLocaleString()}</div>
+                   <div className="flex flex-col gap-1 text-[9px] sm:text-[10px] font-black bg-white/10 p-2 rounded-xl">
+                      <span>成交費收入: ${Math.round(analysis.managementInitialIncome).toLocaleString()}</span>
+                      <span>管理費總額: ${Math.round(analysis.managementMonthlyFeeTotal).toLocaleString()}</span>
+                   </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 text-white p-6 sm:p-10 rounded-[2.5rem] flex flex-col sm:flex-row items-center justify-between mb-10 border-l-[12px] border-blue-500 shadow-2xl gap-4">
+                 <div className="text-center sm:text-left">
+                    <div className="text-[10px] sm:text-xs font-black text-blue-400 uppercase tracking-widest mb-1">稅後超額收益 (包租 - 代管)</div>
+                    <div className={`text-3xl sm:text-5xl font-black ${analysis.profitDiff > 0 ? 'text-blue-400' : 'text-rose-400'}`}>
+                       ${Math.round(analysis.profitDiff).toLocaleString()}
+                    </div>
+                 </div>
+                 <div className="text-right sm:max-w-[180px]">
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 leading-relaxed italic">
+                       計入 0.5 個月開發費後的實際利潤對比。
+                    </p>
+                 </div>
+              </div>
+
+              <div className="h-[250px] sm:h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={analysis.chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 900}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#475569', fontSize: 10, fontWeight: 700}} tickFormatter={v => `$${v/1000}k`} />
+                    <Tooltip contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 10px 25px -12px rgb(0 0 0 / 0.1)', fontWeight: 900}} />
+                    <Legend verticalAlign="top" align="right" height={30} iconType="circle" />
+                    <Line name="包租總收益" type="monotone" dataKey="包租總收益" stroke="#2563eb" strokeWidth={5} dot={{r: 5}} />
+                    <Line name="代管總收益" type="monotone" dataKey="代管總收益" stroke="#10b981" strokeWidth={3} strokeDasharray="8 8" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <section className="bg-white p-8 rounded-[3rem] shadow-sm border-2 border-slate-200">
+                <h3 className="text-lg font-black mb-6 flex items-center gap-2 text-slate-900 text-rose-600">
+                  <ShieldAlert size={24} /> 支出成本清單
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center text-sm font-bold border-b pb-2">
+                    <span className="text-slate-500">稅金成本 (7%):</span>
+                    <span className="text-rose-600">-${Math.round(analysis.totalTaxCost).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-bold border-b pb-2">
+                    <span className="text-slate-500">維修備金:</span>
+                    <span className="text-rose-600">-${Math.round(analysis.totalMaintenanceCost).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm font-bold">
+                    <span className="text-slate-500">資金利息:</span>
+                    <span className="text-rose-600">-${Math.round(analysis.totalInterestCost).toLocaleString()}</span>
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-slate-900 p-8 rounded-[3rem] text-white flex flex-col justify-center">
+                 <h4 className="text-blue-400 font-black mb-4 flex items-center gap-2">
+                    <UserCheck size={20} /> 仲介開發觀點
+                 </h4>
+                 <p className="text-xs font-bold leading-relaxed opacity-80 italic">
+                    當您作為包租商時，大房東若支付 0.5 個月的開發費，會顯著降低您的前期資金壓力。本系統已將此收入併入首年損益計算。若此項收入增加，回本期將明顯縮短，提升包租吸引力。
+                 </p>
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;
