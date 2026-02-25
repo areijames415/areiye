@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AREI 系統修復工具</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="./config.js"></script>
+</head>
+<body>
+    <h1>正在修復您的 AREI 系統資料...</h1>
+    <div id="status">正在連線至 Firebase...</div>
+
+    <script>
+        const status = document.getElementById('status');
+        firebase.initializeApp(window.AREI_CONFIG.firebase);
+        const db = firebase.firestore();
+
+        async function repair() {
+            try {
+                status.innerHTML = "正在灌入首頁功能方塊...";
+                const features = [
+                    { title: "租管節稅", icon: "S", category: "tool" },
+                    { title: "Rich Data", icon: "RD", category: "data" },
+                    { title: "售屋節稅", icon: "S", category: "tool" },
+                    { title: "團隊好客", icon: "user", category: "crm" },
+                    { name: "熱情", order: 1 }, { name: "專業", order: 2 },
+                    { name: "永續", order: 3 }, { name: "共榮", order: 4 }
+                ];
+                for (const f of features) { await db.collection('features').add(f); }
+
+                status.innerHTML = "正在灌入教育訓練課程...";
+                const courses = [
+                    { title: "新人入職指南", category: "基礎訓練", date: "2024-03-20" },
+                    { title: "開發技巧實戰", category: "進階課程", date: "2024-03-25" }
+                ];
+                for (const c of courses) { await db.collection('courses').add(c); }
+
+                status.innerHTML = "<h2>✅ 修復完成！請直接開啟您的首頁查看。</h2>";
+                alert("修復成功！現在您的網頁應該完整了。");
+            } catch (e) {
+                status.innerHTML = "❌ 失敗了，請檢查 Firestore Rules 是否已設為 true: " + e.message;
+            }
+        }
+        repair();
+    </script>
+</body>
+</html>
