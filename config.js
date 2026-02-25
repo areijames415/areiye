@@ -2,12 +2,12 @@
 window.AREI_CONFIG = {
     // 1. Firebase 雲端配置 (已根據你的截圖更新)
     firebase: {
-        apiKey: "AIzaSyCNWcbhuQ1qaTK-H_L6cmnYeT_zrU3OTgY",
-        authDomain: "areiye.firebaseapp.com",
-        projectId: "areiye",
-        storageBucket: "areiye.firebasestorage.app",
-        messagingSenderId: "810066009573",
-        appId: "1:810066009573:web:2a6304853dbdb58d7fa30c"
+        apiKey:"AIzaSyCNWcbhuQ1qaTK-H_L6cmnYeT_zrU3OTgY",
+        authDomain:"areiye.firebaseapp.com",
+        projectId:"areiye",
+        storageBucket:"areiye.firebasestorage.app",
+        messagingSenderId:"810066009573",
+        appId:"1:810066009573:web:2a6304853dbdb58d7fa30c"
     },
 
     // 2. 系統安全密碼 🔑
