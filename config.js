@@ -2,7 +2,7 @@
 window.AREI_CONFIG = {
     // 1. Firebase 雲端配置 (已根據你的截圖更新)
     firebase: {
-        apiKey:"AIzaSyCNWcbhuQ1qaTK-H_L6cmnYeT_zrU3OTgY",
+        apiKey:"AIzaSyCLtwbGRh_FN9IOqJqOo1N12XnUZXqweKk",
         authDomain:"areiye.firebaseapp.com",
         projectId:"areiye",
         storageBucket:"areiye.firebasestorage.app",
