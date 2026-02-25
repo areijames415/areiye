@@ -58,3 +58,36 @@ const checkInterval = setInterval(() => {
     clearInterval(checkInterval);
   }
 }, 1000);
+// --- 核心修復引擎：自動建立所有缺失資料 ---
+(function() {
+    const runRepair = async () => {
+        if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+            const db = firebase.firestore();
+            try {
+                // 1. 補齊所有功能方塊 (解決首頁少一半的問題)
+                const items = [
+                    { name: "熱情", order: 1 }, { name: "專業", order: 2 },
+                    { name: "永續", order: 3 }, { name: "共榮", order: 4 },
+                    { title: "租管節稅", icon: "S", category: "tool" },
+                    { title: "Rich Data", icon: "RD", category: "data" },
+                    { title: "售屋節稅", icon: "S", category: "tool" },
+                    { title: "團隊好客", icon: "user", category: "crm" }
+                ];
+                for (const item of items) { await db.collection('features').add(item); }
+                
+                // 2. 補齊教育訓練資料 (解決 edu.html 空白問題)
+                const courses = [
+                    { title: "新人入職指南", category: "基礎訓練", date: "2024-03-20" },
+                    { title: "房地產開發實務", category: "進階課程", date: "2024-03-25" }
+                ];
+                for (const c of courses) { await db.collection('courses').add(c); }
+
+                console.log("✅ 所有元件資料已自動補齊！");
+            } catch (e) { console.error("修復失敗：", e); }
+        }
+    };
+    // 偵測 Firebase 狀態並執行
+    const timer = setInterval(() => {
+        if (typeof firebase !== 'undefined') { runRepair(); clearInterval(timer); }
+    }, 1000);
+})();
