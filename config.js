@@ -1,6 +1,6 @@
-// [AREI-SMART-CONFIG] 全域核心設定檔
+// [AREI-SMART-CONFIG] 全域核心設定檔 ⚙️
 window.AREI_CONFIG = {
-    // 1. Firebase 雲端配置 (請至 Firebase 控制台複製貼上)
+    // 1. Firebase 雲端配置 (請將你 Firebase Console 的資訊貼在這裡)
     firebase: {
         apiKey: "你的_API_KEY",
         authDomain: "你的_PROJECT_ID.firebaseapp.com",
@@ -10,17 +10,16 @@ window.AREI_CONFIG = {
         appId: "你的_APP_ID"
     },
 
-    // 2. 應用程式 ID (用於資料庫路徑)
-    appId: "arei-master-v53",
-
-    // 3. 系統密碼 (混淆前的原始碼)
+    // 2. 系統安全密碼 🔑
     pinCode: "227708",
 
-    // 4. 本地頁面路徑清單 (這就是 19 個分頁的導航中心)
+    // 3. 頁面連結導航清單 🔗
     pages: {
         index: "./index.html",
-        edu: "./edu.html", // 教育訓練
-        tax: "./pages/tax.html", // 租管節稅
-        // 剩下的分頁可以以此類推...
+        edu: "./edu.html" // 這是你的第二個分頁
     }
 };
+
+// 為了相容於舊程式碼的解析邏輯，自動轉換配置
+window.__firebase_config = JSON.stringify(window.AREI_CONFIG.firebase);
+window.__app_id = "arei-master-v53";
